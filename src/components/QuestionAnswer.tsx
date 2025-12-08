@@ -1,10 +1,20 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Slider } from '@/components/ui/slider';
 import { AnswerType, AnswerOption, ExperienceConfig } from '@/types/job';
 import { cn } from '@/lib/utils';
+
+// Default emojis for options without specific emoji
+const defaultEmojis = ['📌', '✨', '💡', '🔹', '⭐', '📎', '🔸', '💠'];
+
+// Experience options (predefined)
+const experienceOptions = [
+  { value: 0, label: 'No experience', emoji: '0️⃣' },
+  { value: 1, label: 'Less than 1 year', emoji: '1️⃣' },
+  { value: 2, label: '1-3 years', emoji: '2️⃣' },
+  { value: 3, label: '3-5 years', emoji: '3️⃣' },
+  { value: 5, label: '5+ years', emoji: '5️⃣' },
+];
 
 interface QuestionAnswerProps {
   answerType: AnswerType;
@@ -65,8 +75,9 @@ export function QuestionAnswer({
       <div className="mt-3 space-y-2">
         <p className="text-sm text-muted-foreground mb-2">Select all that apply</p>
         <div className="grid gap-2">
-          {options.map((option) => {
+          {options.map((option, index) => {
             const isSelected = selectedValues.includes(option.label);
+            const emoji = option.emoji || defaultEmojis[index % defaultEmojis.length];
             return (
               <button
                 key={option.label}
@@ -80,7 +91,7 @@ export function QuestionAnswer({
                 onClick={() => toggleOption(option.label)}
               >
                 <Checkbox checked={isSelected} className="pointer-events-none" />
-                {option.emoji && <span className="text-xl">{option.emoji}</span>}
+                <span className="text-xl">{emoji}</span>
                 <span className="font-medium">{option.label}</span>
               </button>
             );
@@ -91,28 +102,30 @@ export function QuestionAnswer({
   }
 
   if (answerType === 'experience') {
-    const config = experienceConfig || { min: 0, max: 10, unit: 'years' as const };
-    const currentValue = typeof value === 'number' ? value : config.min;
+    const currentValue = typeof value === 'number' ? value : null;
 
     return (
-      <div className="mt-3 space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Experience</span>
-          <span className="text-lg font-semibold">
-            {currentValue} {config.unit}
-          </span>
-        </div>
-        <Slider
-          value={[currentValue]}
-          min={config.min}
-          max={config.max}
-          step={1}
-          onValueChange={([val]) => onChange(val)}
-          className="w-full"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{config.min} {config.unit}</span>
-          <span>{config.max}+ {config.unit}</span>
+      <div className="mt-3 space-y-2">
+        <div className="grid gap-2">
+          {experienceOptions.map((option) => {
+            const isSelected = currentValue === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left',
+                  isSelected
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                )}
+                onClick={() => onChange(option.value)}
+              >
+                <span className="text-xl">{option.emoji}</span>
+                <span className="font-medium">{option.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
