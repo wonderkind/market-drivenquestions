@@ -15,6 +15,12 @@ export interface ProfileTranslateResponse {
   originalProfile: string;
 }
 
+export interface JobHighlights {
+  Qualifications?: string[];
+  Responsibilities?: string[];
+  Benefits?: string[];
+}
+
 export interface Job {
   job_id: string;
   job_title: string;
@@ -43,9 +49,17 @@ export interface Job {
   job_min_salary: number | null;
   job_max_salary: number | null;
   job_salary_period: string | null;
-  job_highlights: Record<string, unknown>;
+  job_highlights: JobHighlights;
   job_onet_soc: string | null;
   job_onet_job_zone: string | null;
+}
+
+export interface EnhancedJob {
+  job_id: string;
+  job_title: string;
+  employer_name: string;
+  job_description: string;
+  job_highlights: JobHighlights;
 }
 
 export interface SearchParams {

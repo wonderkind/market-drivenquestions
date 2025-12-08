@@ -5,11 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface JobHighlights {
+  Qualifications?: string[];
+  Responsibilities?: string[];
+  Benefits?: string[];
+}
+
 interface Job {
   job_id: string;
   job_title: string;
   employer_name: string;
   job_description: string;
+  job_highlights?: JobHighlights;
 }
 
 serve(async (req) => {
@@ -18,7 +25,7 @@ serve(async (req) => {
   }
 
   try {
-    const { jobs } = await req.json() as { jobs: Job[] };
+    const { jobs, enhanced } = await req.json() as { jobs: Job[]; enhanced?: boolean };
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -32,12 +39,29 @@ serve(async (req) => {
       });
     }
 
-    console.log('Analyzing', jobs.length, 'job descriptions');
+    console.log('Analyzing', jobs.length, 'job descriptions', enhanced ? '(ENHANCED MODE)' : '');
 
-    // Prepare job descriptions for analysis
-    const jobSummaries = jobs.map((job, index) => 
-      `[Job ${index + 1}] ${job.job_title} at ${job.employer_name}:\n${job.job_description?.slice(0, 1500) || 'No description'}`
-    ).join('\n\n---\n\n');
+    // Prepare job data for analysis - use enhanced highlights if available
+    const jobSummaries = jobs.map((job, index) => {
+      let summary = `[Job ${index + 1}] ${job.job_title} at ${job.employer_name}:`;
+      
+      if (enhanced && job.job_highlights) {
+        // Enhanced mode: use structured highlights for better accuracy
+        if (job.job_highlights.Qualifications?.length) {
+          summary += `\n\n**QUALIFICATIONS (Structured):**\n${job.job_highlights.Qualifications.map(q => `- ${q}`).join('\n')}`;
+        }
+        if (job.job_highlights.Responsibilities?.length) {
+          summary += `\n\n**RESPONSIBILITIES (Structured):**\n${job.job_highlights.Responsibilities.map(r => `- ${r}`).join('\n')}`;
+        }
+        // Also include description for context
+        summary += `\n\n**Full Description:**\n${job.job_description?.slice(0, 1000) || 'No description'}`;
+      } else {
+        // Standard mode: use job description
+        summary += `\n${job.job_description?.slice(0, 1500) || 'No description'}`;
+      }
+      
+      return summary;
+    }).join('\n\n---\n\n');
 
     const systemPrompt = `You are an expert job market analyst specializing in Dutch/European labor requirements. Analyze job descriptions and extract requirements into three DISTINCT categories.
 

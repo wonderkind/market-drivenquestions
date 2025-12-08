@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Job, SearchParams, SearchResponse, ProfileTranslateParams, ProfileTranslateResponse } from '@/types/job';
+import { Job, SearchParams, SearchResponse, ProfileTranslateParams, ProfileTranslateResponse, EnhancedJob } from '@/types/job';
 import { useToast } from '@/hooks/use-toast';
 
 export function useJobSearch() {
@@ -80,6 +80,32 @@ export function useJobSearch() {
     }
   };
 
+  const getJobDetails = async (jobIds: string[], country: string): Promise<EnhancedJob[]> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-job-details', {
+        body: { jobIds, country },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return data.jobs || [];
+    } catch (error) {
+      console.error('Get job details error:', error);
+      toast({
+        title: 'Failed to fetch job details',
+        description: error instanceof Error ? error.message : 'Failed to get enhanced job data',
+        variant: 'destructive',
+      });
+      return [];
+    }
+  };
+
   return {
     jobs,
     loading,
@@ -87,6 +113,7 @@ export function useJobSearch() {
     searchParams,
     searchJobs,
     translateProfile,
+    getJobDetails,
     setJobs,
   };
 }
