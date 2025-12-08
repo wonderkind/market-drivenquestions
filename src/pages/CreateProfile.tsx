@@ -13,13 +13,12 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/Header';
-import { JobList } from '@/components/JobList';
 import { AnalysisCard } from '@/components/AnalysisCard';
 import { useJobSearch } from '@/hooks/useJobSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Job, AnalysisResult, EnhancedJob } from '@/types/job';
+import { Job, AnalysisResult } from '@/types/job';
 import {
   Search,
   MapPin,
@@ -36,6 +35,11 @@ import {
   Award,
   Loader2,
   Save,
+  Briefcase,
+  Building,
+  Clock,
+  ExternalLink,
+  Languages,
 } from 'lucide-react';
 
 const countries = [
@@ -76,6 +80,7 @@ export default function CreateProfile() {
   const { searchJobs, translateProfile, loading, translating } = useJobSearch();
 
   const state = location.state as LocationState | undefined;
+  const hasPrefilledData = !!(state?.profile || state?.country || state?.language);
 
   // Form state
   const [profile, setProfile] = useState(state?.profile || '');
@@ -93,6 +98,9 @@ export default function CreateProfile() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const getCountryInfo = (code: string) => countries.find((c) => c.value === code) || { value: code, label: code.toUpperCase(), flag: '🌍' };
+  const getLanguageLabel = (code: string) => languages.find((l) => l.value === code)?.label || code.toUpperCase();
 
   const handleGenerateTitles = async () => {
     if (!profile.trim()) return;
@@ -234,6 +242,8 @@ export default function CreateProfile() {
     }
   };
 
+  const countryInfo = getCountryInfo(country);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -249,6 +259,38 @@ export default function CreateProfile() {
             Search for jobs, analyze requirements, and save interview questions.
           </p>
         </div>
+
+        {/* Pre-filled Context Banner */}
+        {hasPrefilledData && step === 'profile' && (
+          <Card className="mb-6 border-primary/20 bg-primary/5">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Pre-filled from Dashboard</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {state?.profile && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Briefcase className="h-3 w-3" />
+                    {state.profile}
+                  </Badge>
+                )}
+                {state?.country && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Globe className="h-3 w-3" />
+                    {getCountryInfo(state.country).flag} {getCountryInfo(state.country).label}
+                  </Badge>
+                )}
+                {state?.language && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Languages className="h-3 w-3" />
+                    {getLanguageLabel(state.language)}
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8">
@@ -363,164 +405,186 @@ export default function CreateProfile() {
           </Card>
         )}
 
-        {/* Step 2: Review Titles */}
+        {/* Step 2: Review Titles - AI Style */}
         {step === 'review' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5 text-primary" />
-                Review & Search
-              </CardTitle>
-              <CardDescription>
-                Edit or remove titles before searching. Profile: "{profile}"
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSearch} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Generated Job Titles</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {jobTitles.map((title, index) => (
-                      <div key={index} className="flex items-center">
-                        {editingIndex === index ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              className="h-8 w-48"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleSaveEdit();
-                                }
-                                if (e.key === 'Escape') {
-                                  handleCancelEdit();
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={handleSaveEdit}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={handleCancelEdit}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm"
+          <div className="space-y-6">
+            {/* AI Generated Titles Card */}
+            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/5 overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
+              <CardHeader className="relative">
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Brain className="h-5 w-5 text-primary" />
+                  </div>
+                  <span>AI Generated Job Titles</span>
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    Powered by AI
+                  </span>
+                  Based on profile: "{profile}"
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="flex flex-wrap gap-3">
+                  {jobTitles.map((title, index) => (
+                    <div key={index} className="group">
+                      {editingIndex === index ? (
+                        <div className="flex items-center gap-1 p-1 rounded-lg bg-background border border-primary/30">
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="h-8 w-48 border-0 focus-visible:ring-0"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveEdit();
+                              }
+                              if (e.key === 'Escape') {
+                                handleCancelEdit();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                            onClick={handleSaveEdit}
                           >
-                            {title}
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={handleCancelEdit}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border/50 shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200">
+                          <Sparkles className="h-4 w-4 text-primary/60" />
+                          <span className="font-medium text-foreground">{title}</span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               type="button"
                               onClick={() => handleStartEdit(index)}
-                              className="ml-1 hover:text-primary"
+                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary"
                             >
-                              <Pencil className="h-3 w-3" />
+                              <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveTitle(index)}
-                              className="ml-1 hover:text-destructive"
+                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-3.5 w-3.5" />
                             </button>
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
+                {jobTitles.length === 0 && (
+                  <p className="text-sm text-destructive">Add at least one job title to search</p>
+                )}
+              </CardContent>
+            </Card>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location (Optional)</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="location"
-                        placeholder="e.g. Amsterdam"
-                        value={locationValue}
-                        onChange={(e) => setLocationValue(e.target.value)}
-                        className="pl-9"
-                      />
+            {/* Search Options */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-primary" />
+                  Search Options
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSearch} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location (Optional)</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="location"
+                          placeholder="e.g. Amsterdam"
+                          value={locationValue}
+                          onChange={(e) => setLocationValue(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Country</Label>
+                      <Select value={country} onValueChange={setCountry}>
+                        <SelectTrigger>
+                          <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.flag} {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Date Posted</Label>
+                      <Select value={datePosted} onValueChange={setDatePosted}>
+                        <SelectTrigger>
+                          <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dateOptions.map((d) => (
+                            <SelectItem key={d.value} value={d.value}>
+                              {d.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Country</Label>
-                    <Select value={country} onValueChange={setCountry}>
-                      <SelectTrigger>
-                        <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.flag} {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setStep('profile')}
+                      className="flex-1"
+                    >
+                      ← Back
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={loading || jobTitles.length === 0}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Searching...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="mr-2 h-4 w-4" />
+                          Search Jobs
+                        </>
+                      )}
+                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Date Posted</Label>
-                    <Select value={datePosted} onValueChange={setDatePosted}>
-                      <SelectTrigger>
-                        <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dateOptions.map((d) => (
-                          <SelectItem key={d.value} value={d.value}>
-                            {d.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep('profile')}
-                    className="flex-1"
-                  >
-                    ← Back
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={loading || jobTitles.length === 0}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Search Jobs
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Step 3: Results */}
@@ -528,9 +592,12 @@ export default function CreateProfile() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Search Results</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-primary" />
+                  Search Results
+                </CardTitle>
                 <CardDescription>
-                  Found {jobs.length} jobs for "{profile}"
+                  Found {jobs.length} jobs for "{profile}" in {countryInfo.flag} {countryInfo.label}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -550,16 +617,75 @@ export default function CreateProfile() {
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              {jobs.map((job) => (
-                <Card key={job.job_id}>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium text-foreground">{job.job_title}</h4>
-                    <p className="text-sm text-muted-foreground">{job.employer_name} • {job.job_location}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {jobs.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-12 text-center">
+                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No jobs found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Try adjusting your search terms or selecting a different country
+                  </p>
+                  <Button variant="outline" onClick={() => setStep('review')}>
+                    Modify Search
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {jobs.map((job) => (
+                  <Card key={job.job_id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          {job.employer_logo ? (
+                            <img
+                              src={job.employer_logo}
+                              alt={job.employer_name}
+                              className="w-12 h-12 rounded-lg object-contain bg-muted p-1"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                              <Building className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-medium text-foreground">{job.job_title}</h4>
+                            <p className="text-sm text-muted-foreground">{job.employer_name}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {job.job_location}
+                              </span>
+                              {job.job_employment_type && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {job.job_employment_type}
+                                </Badge>
+                              )}
+                              {job.job_posted_at && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {job.job_posted_at}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" asChild>
+                          <a href={job.job_apply_link} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                      {job.job_description && (
+                        <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+                          {job.job_description.slice(0, 200)}...
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
