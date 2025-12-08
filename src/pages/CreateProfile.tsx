@@ -336,7 +336,7 @@ export default function CreateProfile() {
 
         {/* Pre-filled Context Banner */}
         {hasPrefilledData && step === 'profile' && <Card className="mb-6 border-primary/20 bg-primary/5">
-            <CardContent className="py-4">
+            <CardContent className="py-4 border">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="font-medium text-foreground">Pre-filled from Dashboard</span>
@@ -381,9 +381,9 @@ export default function CreateProfile() {
         {step === 'profile' && <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">Search relevant jobs in your ONET-SOC Profile<Sparkles className="h-5 w-5 text-primary" />
-                Enter ONET-SOC Profile
+                ​
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="mx-0 my-[10px]">
                 Enter an occupational profile and AI will generate relevant job titles
               </CardDescription>
             </CardHeader>
