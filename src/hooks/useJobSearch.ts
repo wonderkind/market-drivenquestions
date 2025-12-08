@@ -46,31 +46,60 @@ export function useJobSearch() {
     setSearchParams(params);
 
     try {
-      const { data, error } = await supabase.functions.invoke('search-jobs', {
-        body: params,
-      });
-
-      if (error) {
-        throw error;
+      // Determine which titles to search - use jobTitles array or fallback to query
+      const titlesToSearch = params.jobTitles || (params.query ? [params.query] : []);
+      
+      if (titlesToSearch.length === 0) {
+        throw new Error('No job titles provided for search');
       }
 
-      if (data.error) {
-        throw new Error(data.error);
+      // Make parallel API calls for each job title
+      const searchPromises = titlesToSearch.map(title =>
+        supabase.functions.invoke('search-jobs', {
+          body: { 
+            query: title, 
+            location: params.location,
+            country: params.country,
+            language: params.language,
+            date_posted: params.date_posted,
+          },
+        })
+      );
+
+      const results = await Promise.all(searchPromises);
+
+      // Combine and deduplicate results by job_id
+      const allJobs: Job[] = [];
+      const seenJobIds = new Set<string>();
+
+      for (const result of results) {
+        if (result.error) {
+          console.error('Search error for one title:', result.error);
+          continue;
+        }
+        if (result.data?.data) {
+          for (const job of result.data.data) {
+            if (!seenJobIds.has(job.job_id)) {
+              seenJobIds.add(job.job_id);
+              allJobs.push(job);
+            }
+          }
+        }
       }
 
-      const response = data as SearchResponse;
-      setJobs(response.data || []);
+      setJobs(allJobs);
       
       // Auto-save search for logged-in users (prevent duplicates)
+      const combinedQuery = titlesToSearch.join(', ');
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && response.data && response.data.length > 0) {
+      if (user && allJobs.length > 0) {
         try {
           // Check if this exact search already exists
           const { data: existingSearch } = await supabase
             .from('saved_searches')
             .select('id')
             .eq('user_id', user.id)
-            .eq('job_title', params.query)
+            .eq('job_title', combinedQuery)
             .eq('location', params.location || '')
             .eq('country', params.country)
             .eq('language', params.language)
@@ -80,7 +109,7 @@ export function useJobSearch() {
           if (!existingSearch) {
             await supabase.from('saved_searches').insert({
               user_id: user.id,
-              job_title: params.query,
+              job_title: combinedQuery,
               location: params.location,
               country: params.country,
               language: params.language,
@@ -98,10 +127,10 @@ export function useJobSearch() {
       
       toast({
         title: 'Search Complete',
-        description: `Found ${response.data?.length || 0} jobs`,
+        description: `Found ${allJobs.length} unique jobs from ${titlesToSearch.length} job title searches`,
       });
 
-      return response.data || [];
+      return allJobs;
     } catch (error) {
       console.error('Search error:', error);
       toast({

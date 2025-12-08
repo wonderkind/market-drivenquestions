@@ -93,7 +93,7 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
     if (jobTitles.length === 0) return;
     
     onSearch({
-      query: jobTitles.join(', '),
+      jobTitles,
       location,
       country,
       language,

@@ -146,7 +146,7 @@ export default function CreateProfile() {
     if (jobTitles.length === 0) return;
 
     const searchResults = await searchJobs({
-      query: jobTitles.join(', '),
+      jobTitles,
       location: locationValue,
       country,
       language,
