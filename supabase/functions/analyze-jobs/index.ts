@@ -160,6 +160,25 @@ Examples of the Gen-Z friendly English tone:
 - "Which certifications have you obtained?"
 - "Do you have a driver's license?"
 
+## ANSWER TYPE RULES
+
+For each question, determine the appropriate answer type:
+
+1. **yes_no**: Use for binary questions that can be answered with Yes or No
+   - Examples: "Do you have a valid driver's license?", "Are you EU citizen?"
+   
+2. **multiple_choice**: Use for questions where multiple options apply (like languages, certifications held)
+   - MUST include "options" array with label and optional emoji
+   - Examples: "Which languages do you speak?", "Which certifications do you have?"
+   - Always include 3-6 relevant options based on job requirements
+   
+3. **experience**: Use for questions about years/months of experience
+   - MUST include "experienceConfig" with min, max, and unit ("years" or "months")
+   - Examples: "How many years of warehouse experience?", "How long have you worked as a forklift operator?"
+   
+4. **text**: Use for open-ended questions (use sparingly)
+   - Examples: "Describe your previous role as...", "What specific equipment have you operated?"
+
 ## OUTPUT INSTRUCTIONS
 
 For each category, provide maximum 2 suggested interview questions that a job seeker should prepare for:
@@ -174,6 +193,9 @@ Return your analysis as a JSON object with this exact structure:
     "questions": [
       {
         "question": "The interview question in ${outputLanguage}",
+        "answerType": "yes_no | multiple_choice | experience | text",
+        "options": [{"label": "Option 1", "emoji": "🏷️"}, ...],
+        "experienceConfig": {"min": 0, "max": 10, "unit": "years"},
         "mentions": <number of jobs mentioning this requirement>,
         "certainty": "<high/medium/low>",
         "quotes": ["Quote 1 from job description", "Quote 2"],
@@ -189,6 +211,11 @@ Return your analysis as a JSON object with this exact structure:
   },
   "summary": "Brief overall summary of requirements trends in ${outputLanguage}"
 }
+
+**IMPORTANT for answer types:**
+- "options" field is ONLY required when answerType is "multiple_choice"
+- "experienceConfig" field is ONLY required when answerType is "experience"
+- For "yes_no" and "text" types, do NOT include options or experienceConfig
 
 Be specific with quotes - use actual text from the job descriptions. Include the employer name in sources.`;
 
