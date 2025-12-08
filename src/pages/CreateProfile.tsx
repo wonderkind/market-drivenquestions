@@ -325,14 +325,7 @@ export default function CreateProfile() {
           Back to Dashboard
         </Button>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            {isReanalyseMode ? 'Re-analyse Profile' : 'Create New Profile'}
-          </h1>
-          <p className="text-muted-foreground">
-            {isReanalyseMode ? 'Run a fresh analysis on this profile with updated job data.' : 'Search for jobs, analyze requirements, and save interview questions.'}
-          </p>
-        </div>
+        
 
         {/* Pre-filled Context Banner */}
         {hasPrefilledData && step === 'profile' && <Card className="mb-6 border-primary/20 bg-primary/5">
