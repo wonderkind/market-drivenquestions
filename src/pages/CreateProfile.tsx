@@ -424,7 +424,7 @@ export default function CreateProfile() {
                 </div>
               </div>
 
-              <Button onClick={handleGenerateTitles} className="w-full" disabled={translating || !profile.trim()}>Get{translating ? <>
+              <Button onClick={handleGenerateTitles} disabled={translating || !profile.trim()} className="w-full">Get{translating ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating Job Titles...
                   </> : <>
