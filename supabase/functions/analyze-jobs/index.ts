@@ -39,13 +39,58 @@ serve(async (req) => {
       `[Job ${index + 1}] ${job.job_title} at ${job.employer_name}:\n${job.job_description?.slice(0, 1500) || 'No description'}`
     ).join('\n\n---\n\n');
 
-    const systemPrompt = `You are an expert job market analyst. Analyze the provided job descriptions and extract requirements related to three categories:
+    const systemPrompt = `You are an expert job market analyst specializing in Dutch/European labor requirements. Analyze job descriptions and extract requirements into three DISTINCT categories.
 
-1. **License** - Any driving licenses (e.g., Rijbewijs B, C1, forklift license) or permits
-2. **Qualification** - Education levels (MBO, HBO, Bachelor, etc.) and years of experience
-3. **Certification** - Professional certifications (VCA, BHV, forklift certificate, etc.)
+## CATEGORY DEFINITIONS (CRITICAL - Read Carefully)
 
-For each category, provide maximum 2 suggested interview questions that a job seeker should prepare for.
+### 1. LICENSE (Licensure)
+- **Legal Status**: MANDATORY BY LAW. You CANNOT legally perform the job without it.
+- **Issuing Authority**: Governmental Regulatory Body (e.g., RDW, CBR, Ministerie, Police, BIG Register)
+- **Purpose**: Protect the PUBLIC by ensuring minimum competency for regulated professions (high public risk)
+- **Renewal**: Strict government requirements, Continuing Education, sometimes background checks
+- **Examples**: 
+  - Rijbewijs B, C, CE (driving licenses)
+  - BIG Register (healthcare professionals)
+  - Taxipas
+  - ADR (dangerous goods transport license)
+
+### 2. CERTIFICATION
+- **Legal Status**: VOLUNTARY (or mandatory by employer/industry). NOT legally required by government.
+- **Issuing Authority**: Private, Professional Body, or Industry Association (e.g., VCA, SSVV, CompTIA)
+- **Purpose**: Protect the PROFESSION/CONSUMER by validating specialized expertise beyond legal minimum
+- **Renewal**: Requires continuous education or re-examination
+- **Examples**:
+  - VCA Basis/VOL (safety certification)
+  - Heftruck/Reachtruck Certificaat (forklift certificate - NOT a license!)
+  - BHV (first aid)
+  - HACCP (food safety)
+  - EPT/PPT certificates
+
+### 3. QUALIFICATION
+- **Legal Status**: General suitability criteria, NOT legally binding
+- **Issuing Authority**: Employer requirements, educational institutions, experience itself
+- **Purpose**: Determine if candidate has basic suitability for the role
+- **Renewal**: No formal renewal; maintained through continuous work experience
+- **Examples**:
+  - "3-5 years experience"
+  - "MBO 3/4 niveau"
+  - "HBO diploma"
+  - "Fluency in Dutch and English"
+  - "Physical fitness"
+
+## IMPORTANT CLASSIFICATION RULES
+- Forklift/Heftruck is a CERTIFICATION, not a license (issued by private training companies)
+- Driving licenses (Rijbewijs) are LICENSES (issued by CBR/government)
+- VCA is a CERTIFICATION (issued by SSVV industry body)
+- Education levels are QUALIFICATIONS
+- Years of experience are QUALIFICATIONS
+
+## OUTPUT INSTRUCTIONS
+
+For each category, provide maximum 2 suggested interview questions that a job seeker should prepare for:
+- **License questions**: Focus on validity, renewal dates, endorsements, legal compliance
+- **Certification questions**: Focus on when obtained, expiration, practical experience using it
+- **Qualification questions**: Focus on depth of experience, education relevance, language proficiency
 
 Return your analysis as a JSON object with this exact structure:
 {
@@ -53,7 +98,7 @@ Return your analysis as a JSON object with this exact structure:
     "questions": [
       {
         "question": "The interview question",
-        "mentions": <number of jobs mentioning this>,
+        "mentions": <number of jobs mentioning this requirement>,
         "certainty": "<high/medium/low>",
         "quotes": ["Quote 1 from job description", "Quote 2"],
         "sources": ["Company 1", "Company 2"]
