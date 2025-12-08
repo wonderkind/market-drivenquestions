@@ -63,8 +63,9 @@ export interface EnhancedJob {
 }
 
 export interface SearchParams {
-  query: string;
-  location: string;
+  query?: string;
+  jobTitles?: string[];
+  location?: string;
   country: string;
   language: string;
   date_posted: string;
