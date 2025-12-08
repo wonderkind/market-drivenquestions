@@ -117,14 +117,11 @@ export default function CreateProfile() {
   // Pagination state for results
   const [resultsPage, setResultsPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(15);
-
   const paginatedJobs = useMemo(() => {
     const startIndex = (resultsPage - 1) * resultsPerPage;
     return jobs.slice(startIndex, startIndex + resultsPerPage);
   }, [jobs, resultsPage, resultsPerPage]);
-
   const totalJobPages = Math.ceil(jobs.length / resultsPerPage);
-
   const getCountryInfo = (code: string) => countries.find(c => c.value === code) || {
     value: code,
     label: code.toUpperCase(),
@@ -612,24 +609,12 @@ export default function CreateProfile() {
               </Card> : <Card className="shadow-sm">
                 <CardContent className="p-6">
                   <div className="space-y-3">
-                    {paginatedJobs.map((job, index) => (
-                      <div 
-                        key={job.job_id} 
-                        className={`p-4 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all duration-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
-                      >
+                    {paginatedJobs.map((job, index) => <div key={job.job_id} className={`p-4 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all duration-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3">
-                            {job.employer_logo ? (
-                              <img 
-                                src={job.employer_logo} 
-                                alt={job.employer_name} 
-                                className="w-11 h-11 rounded-lg object-contain bg-muted p-1 flex-shrink-0" 
-                              />
-                            ) : (
-                              <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                            {job.employer_logo ? <img src={job.employer_logo} alt={job.employer_name} className="w-11 h-11 rounded-lg object-contain bg-muted p-1 flex-shrink-0" /> : <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                                 <Building className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
+                              </div>}
                             <div className="min-w-0">
                               <h4 className="font-medium text-foreground truncate">{job.job_title}</h4>
                               <p className="text-sm text-muted-foreground">{job.employer_name}</p>
@@ -638,17 +623,13 @@ export default function CreateProfile() {
                                   <MapPin className="h-3 w-3" />
                                   {job.job_location}
                                 </span>
-                                {job.job_employment_type && (
-                                  <Badge variant="secondary" className="text-xs">
+                                {job.job_employment_type && <Badge variant="secondary" className="text-xs text-primary-foreground">
                                     {job.job_employment_type}
-                                  </Badge>
-                                )}
-                                {job.job_posted_at && (
-                                  <span className="flex items-center gap-1">
+                                  </Badge>}
+                                {job.job_posted_at && <span className="flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     {job.job_posted_at}
-                                  </span>
-                                )}
+                                  </span>}
                               </div>
                             </div>
                           </div>
@@ -658,24 +639,16 @@ export default function CreateProfile() {
                             </a>
                           </Button>
                         </div>
-                        {job.job_description && (
-                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 pl-14">
+                        {job.job_description && <p className="mt-2 text-sm text-muted-foreground line-clamp-2 pl-14">
                             {job.job_description.slice(0, 200)}...
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                          </p>}
+                      </div>)}
                   </div>
                   
-                  <TablePagination
-                    currentPage={resultsPage}
-                    totalPages={totalJobPages}
-                    totalItems={jobs.length}
-                    itemsPerPage={resultsPerPage}
-                    onPageChange={setResultsPage}
-                    onItemsPerPageChange={(n) => { setResultsPerPage(n); setResultsPage(1); }}
-                    itemsPerPageOptions={[10, 15, 25, 50]}
-                  />
+                  <TablePagination currentPage={resultsPage} totalPages={totalJobPages} totalItems={jobs.length} itemsPerPage={resultsPerPage} onPageChange={setResultsPage} onItemsPerPageChange={n => {
+              setResultsPerPage(n);
+              setResultsPage(1);
+            }} itemsPerPageOptions={[10, 15, 25, 50]} />
                 </CardContent>
               </Card>}
           </div>}
