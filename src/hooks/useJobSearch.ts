@@ -61,19 +61,35 @@ export function useJobSearch() {
       const response = data as SearchResponse;
       setJobs(response.data || []);
       
-      // Auto-save search for logged-in users
+      // Auto-save search for logged-in users (prevent duplicates)
       const { data: { user } } = await supabase.auth.getUser();
       if (user && response.data && response.data.length > 0) {
         try {
-          await supabase.from('saved_searches').insert({
-            user_id: user.id,
-            job_title: params.query,
-            location: params.location,
-            country: params.country,
-            language: params.language,
-            date_posted: params.date_posted,
-          });
-          console.log('Search saved automatically');
+          // Check if this exact search already exists
+          const { data: existingSearch } = await supabase
+            .from('saved_searches')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('job_title', params.query)
+            .eq('location', params.location || '')
+            .eq('country', params.country)
+            .eq('language', params.language)
+            .eq('date_posted', params.date_posted)
+            .maybeSingle();
+
+          if (!existingSearch) {
+            await supabase.from('saved_searches').insert({
+              user_id: user.id,
+              job_title: params.query,
+              location: params.location,
+              country: params.country,
+              language: params.language,
+              date_posted: params.date_posted,
+            });
+            console.log('Search saved automatically');
+          } else {
+            console.log('Search already exists, skipping save');
+          }
         } catch (saveError) {
           // Don't fail the search if saving fails
           console.error('Failed to auto-save search:', saveError);
@@ -125,6 +141,37 @@ export function useJobSearch() {
     }
   };
 
+  const loadMoreJobs = async (page: number): Promise<Job[]> => {
+    if (!searchParams) {
+      toast({
+        title: 'No search to continue',
+        description: 'Please perform a search first',
+        variant: 'destructive',
+      });
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('search-jobs', {
+        body: { ...searchParams, page },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const response = data as SearchResponse;
+      return response.data || [];
+    } catch (error) {
+      console.error('Load more jobs error:', error);
+      toast({
+        title: 'Failed to load more jobs',
+        description: error instanceof Error ? error.message : 'Failed to fetch additional jobs',
+        variant: 'destructive',
+      });
+      return [];
+    }
+  };
+
   return {
     jobs,
     loading,
@@ -133,6 +180,7 @@ export function useJobSearch() {
     searchJobs,
     translateProfile,
     getJobDetails,
+    loadMoreJobs,
     setJobs,
   };
 }

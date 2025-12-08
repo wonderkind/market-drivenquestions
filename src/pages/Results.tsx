@@ -33,7 +33,7 @@ export default function Results() {
       });
       return;
     }
-    navigate('/analysis', { state: { jobs, country: searchParams?.country || 'nl' } });
+    navigate('/analysis', { state: { jobs, country: searchParams?.country || 'nl', searchParams } });
   };
 
   return (
