@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SavedQuestionsData } from '@/types/job';
 import { DashboardFilters, SUPPORTED_COUNTRIES } from '@/components/DashboardFilters';
 import { CountryStatusCell } from '@/components/CountryStatusCell';
+import { TablePagination } from '@/components/TablePagination';
 import { FolderOpen, RefreshCw, Loader2 } from 'lucide-react';
 
 interface CountryAnalysis {
@@ -49,6 +50,8 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'analysed' | 'not_created'>('all');
   const [countryFilter, setCountryFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -64,6 +67,11 @@ export default function Dashboard() {
       fetchData();
     }
   }, [user]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, countryFilter, itemsPerPage]);
 
   const seedOccupations = async () => {
     setSeeding(true);
@@ -208,6 +216,14 @@ export default function Dashboard() {
     });
   }, [profilesMatrix, searchQuery, statusFilter, countryFilter]);
 
+  // Paginated profiles
+  const paginatedProfiles = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProfiles.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProfiles, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage);
+
   const handleCellClick = (profile: ProfileMatrix, countryCode: string, analysis?: CountryAnalysis) => {
     if (analysis?.status === 'analysed' && analysis.analysisId) {
       navigate(`/profile/${analysis.analysisId}`);
@@ -235,11 +251,29 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-48 bg-muted rounded" />
-            <div className="h-64 bg-muted rounded" />
-          </div>
+        <main className="container mx-auto px-4 py-8 max-w-7xl">
+          <Card>
+            <CardHeader>
+              <div className="animate-pulse space-y-3">
+                <div className="h-7 w-64 bg-muted rounded" />
+                <div className="h-4 w-48 bg-muted rounded" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="animate-pulse space-y-4">
+                <div className="flex gap-4">
+                  <div className="h-10 flex-1 bg-muted rounded" />
+                  <div className="h-10 w-40 bg-muted rounded" />
+                  <div className="h-10 w-40 bg-muted rounded" />
+                </div>
+                <div className="space-y-2">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="h-12 bg-muted rounded" />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
@@ -248,16 +282,16 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <Card className="shadow-sm">
+          <CardHeader className="border-b border-border bg-card">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2 text-2xl">
                   <FolderOpen className="h-6 w-6 text-primary" />
                   O*NET-SOC Occupations
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="mt-1">
                   {profilesMatrix.length} occupations • {analysedCount} analyses completed
                 </CardDescription>
               </div>
@@ -276,7 +310,7 @@ export default function Dashboard() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <DashboardFilters
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -287,10 +321,13 @@ export default function Dashboard() {
             />
 
             {profilesMatrix.length === 0 ? (
-              <div className="text-center py-12">
-                <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground mb-4">
-                  No O*NET occupations loaded yet
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                  <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium text-foreground mb-2">No occupations loaded</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Load O*NET occupations to start creating job profiles and analyses.
                 </p>
                 <Button onClick={seedOccupations} className="gap-2" disabled={seeding}>
                   {seeding ? (
@@ -302,54 +339,71 @@ export default function Dashboard() {
                 </Button>
               </div>
             ) : filteredProfiles.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No occupations match your filters</p>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                  <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium text-foreground mb-2">No results found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[120px]">Code</TableHead>
-                      <TableHead className="min-w-[250px]">Occupation</TableHead>
-                      {SUPPORTED_COUNTRIES.map((country) => (
-                        <TableHead key={country.code} className="text-center min-w-[100px]">
-                          <span className="flex items-center justify-center gap-1">
-                            {country.flag} {country.code.toUpperCase()}
-                          </span>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProfiles.map((profile) => (
-                      <TableRow key={profile.code}>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {profile.code}
-                        </TableCell>
-                        <TableCell className="font-medium">{profile.title}</TableCell>
+              <>
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="w-[120px] font-semibold">Code</TableHead>
+                        <TableHead className="min-w-[280px] font-semibold">Occupation</TableHead>
                         {SUPPORTED_COUNTRIES.map((country) => (
-                          <TableCell key={country.code} className="p-2">
-                            <CountryStatusCell
-                              analysis={profile.countries[country.code]}
-                              onClick={() =>
-                                handleCellClick(
-                                  profile,
-                                  country.code,
-                                  profile.countries[country.code]
-                                )
-                              }
-                            />
-                          </TableCell>
+                          <TableHead key={country.code} className="text-center min-w-[110px] font-semibold">
+                            <span className="flex items-center justify-center gap-1.5">
+                              <span className="text-base">{country.flag}</span>
+                              <span>{country.code.toUpperCase()}</span>
+                            </span>
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="mt-4 text-sm text-muted-foreground text-center">
-                  Showing {filteredProfiles.length} of {profilesMatrix.length} occupations
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedProfiles.map((profile, index) => (
+                        <TableRow 
+                          key={profile.code}
+                          className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
+                        >
+                          <TableCell className="font-mono text-sm text-muted-foreground">
+                            {profile.code}
+                          </TableCell>
+                          <TableCell className="font-medium">{profile.title}</TableCell>
+                          {SUPPORTED_COUNTRIES.map((country) => (
+                            <TableCell key={country.code} className="p-2">
+                              <CountryStatusCell
+                                analysis={profile.countries[country.code]}
+                                onClick={() =>
+                                  handleCellClick(
+                                    profile,
+                                    country.code,
+                                    profile.countries[country.code]
+                                  )
+                                }
+                              />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
+
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredProfiles.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                  itemsPerPageOptions={[25, 50, 100]}
+                />
+              </>
             )}
           </CardContent>
         </Card>

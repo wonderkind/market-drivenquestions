@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/Header';
 import { AnalysisCard } from '@/components/AnalysisCard';
+import { TablePagination } from '@/components/TablePagination';
 import { useJobSearch } from '@/hooks/useJobSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -112,6 +113,18 @@ export default function CreateProfile() {
   const [saving, setSaving] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [enhanced, setEnhanced] = useState(false);
+
+  // Pagination state for results
+  const [resultsPage, setResultsPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(15);
+
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (resultsPage - 1) * resultsPerPage;
+    return jobs.slice(startIndex, startIndex + resultsPerPage);
+  }, [jobs, resultsPage, resultsPerPage]);
+
+  const totalJobPages = Math.ceil(jobs.length / resultsPerPage);
+
   const getCountryInfo = (code: string) => countries.find(c => c.value === code) || {
     value: code,
     label: code.toUpperCase(),
@@ -319,7 +332,7 @@ export default function CreateProfile() {
   const countryInfo = getCountryInfo(country);
   return <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
         <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6 gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
@@ -558,76 +571,113 @@ export default function CreateProfile() {
 
         {/* Step 3: Results */}
         {step === 'results' && <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                
-                <CardDescription className="text-2xl text-primary">
-                  Found {jobs.length} jobs for "{profile}" in {countryInfo.flag} {countryInfo.label}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!enhanced && jobs.length > 0}
-                <div className="flex gap-4">
-                  <Button variant="outline" onClick={() => setStep('review')} className="flex-1">
-                    ← Modify Search
-                  </Button>
-                  <Button onClick={handleAnalyze} className="flex-1 gap-2" disabled={jobs.length === 0 || enhancing}>
-                    <Zap className="h-4 w-[25px]" />
-                    Analyze {jobs.length} Jobs
-                  </Button>
+            <Card className="shadow-sm">
+              <CardHeader className="border-b border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Briefcase className="h-5 w-5 text-primary" />
+                      Job Results
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Found <span className="font-semibold text-primary">{jobs.length}</span> jobs for "{profile}" in {countryInfo.flag} {countryInfo.label}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep('review')} size="sm">
+                      ← Modify
+                    </Button>
+                    <Button onClick={handleAnalyze} size="sm" className="gap-2" disabled={jobs.length === 0 || enhancing}>
+                      <Zap className="h-4 w-4" />
+                      Analyze All
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
+              </CardHeader>
             </Card>
 
             {jobs.length === 0 ? <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
-                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                <CardContent className="py-16 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
                   <h3 className="text-lg font-medium text-foreground mb-2">No jobs found</h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                     Try adjusting your search terms or selecting a different country
                   </p>
                   <Button variant="outline" onClick={() => setStep('review')}>
                     Modify Search
                   </Button>
                 </CardContent>
-              </Card> : <div className="space-y-4">
-                {jobs.map(job => <Card key={job.job_id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          {job.employer_logo ? <img src={job.employer_logo} alt={job.employer_name} className="w-12 h-12 rounded-lg object-contain bg-muted p-1" /> : <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                              <Building className="h-6 w-6 text-muted-foreground" />
-                            </div>}
-                          <div>
-                            <h4 className="font-medium text-foreground">{job.job_title}</h4>
-                            <p className="text-sm text-muted-foreground">{job.employer_name}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {job.job_location}
-                              </span>
-                              {job.job_employment_type && <Badge variant="secondary" className="text-xs text-primary-foreground">
-                                  {job.job_employment_type}
-                                </Badge>}
-                              {job.job_posted_at && <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {job.job_posted_at}
-                                </span>}
+              </Card> : <Card className="shadow-sm">
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    {paginatedJobs.map((job, index) => (
+                      <div 
+                        key={job.job_id} 
+                        className={`p-4 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all duration-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            {job.employer_logo ? (
+                              <img 
+                                src={job.employer_logo} 
+                                alt={job.employer_name} 
+                                className="w-11 h-11 rounded-lg object-contain bg-muted p-1 flex-shrink-0" 
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                <Building className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <h4 className="font-medium text-foreground truncate">{job.job_title}</h4>
+                              <p className="text-sm text-muted-foreground">{job.employer_name}</p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {job.job_location}
+                                </span>
+                                {job.job_employment_type && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {job.job_employment_type}
+                                  </Badge>
+                                )}
+                                {job.job_posted_at && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {job.job_posted_at}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          <Button variant="ghost" size="icon" asChild className="flex-shrink-0">
+                            <a href={job.job_apply_link} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="icon" asChild>
-                          <a href={job.job_apply_link} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
+                        {job.job_description && (
+                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2 pl-14">
+                            {job.job_description.slice(0, 200)}...
+                          </p>
+                        )}
                       </div>
-                      {job.job_description && <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                          {job.job_description.slice(0, 200)}...
-                        </p>}
-                    </CardContent>
-                  </Card>)}
-              </div>}
+                    ))}
+                  </div>
+                  
+                  <TablePagination
+                    currentPage={resultsPage}
+                    totalPages={totalJobPages}
+                    totalItems={jobs.length}
+                    itemsPerPage={resultsPerPage}
+                    onPageChange={setResultsPage}
+                    onItemsPerPageChange={(n) => { setResultsPerPage(n); setResultsPage(1); }}
+                    itemsPerPageOptions={[10, 15, 25, 50]}
+                  />
+                </CardContent>
+              </Card>}
           </div>}
 
         {/* Step 4: Analysis */}
