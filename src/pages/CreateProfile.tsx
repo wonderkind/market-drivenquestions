@@ -117,6 +117,7 @@ export default function CreateProfile() {
   // Pagination state for results
   const [resultsPage, setResultsPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(15);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const paginatedJobs = useMemo(() => {
     const startIndex = (resultsPage - 1) * resultsPerPage;
     return jobs.slice(startIndex, startIndex + resultsPerPage);
@@ -639,9 +640,30 @@ export default function CreateProfile() {
                             </a>
                           </Button>
                         </div>
-                        {job.job_description && <p className="mt-2 text-sm text-muted-foreground line-clamp-2 pl-14">
-                            {job.job_description.slice(0, 200)}...
-                          </p>}
+                        {job.job_description && (
+                          <div className="mt-2 pl-14">
+                            <p className={`text-sm text-muted-foreground ${!expandedJobs.has(job.job_id) ? 'line-clamp-2' : ''}`}>
+                              {expandedJobs.has(job.job_id) ? job.job_description : job.job_description.slice(0, 200)}
+                              {!expandedJobs.has(job.job_id) && job.job_description.length > 200 && '...'}
+                            </p>
+                            {job.job_description.length > 200 && (
+                              <button
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedJobs);
+                                  if (newExpanded.has(job.job_id)) {
+                                    newExpanded.delete(job.job_id);
+                                  } else {
+                                    newExpanded.add(job.job_id);
+                                  }
+                                  setExpandedJobs(newExpanded);
+                                }}
+                                className="text-sm text-primary hover:underline mt-1"
+                              >
+                                {expandedJobs.has(job.job_id) ? 'Show less' : 'Show more...'}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>)}
                   </div>
                   
