@@ -15,5 +15,8 @@ verify_jwt = false
 [functions.get-job-details]
 verify_jwt = false
 
+[functions.seed-onet-occupations]
+verify_jwt = false
+
 [auth]
 enabled = true
