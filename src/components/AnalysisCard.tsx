@@ -51,7 +51,7 @@ export function AnalysisCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="divide-y divide-border">
-        {questions.map((q, index) => <div key={index} className="py-4 first:pt-4 last:pb-4">
+        {questions.map((q, index) => <div key={index} className="py-4 first:pt-4 last:pb-4 border-0 border-dashed my-[7px]">
             <div className="flex items-start justify-between gap-4 mb-3">
               <h4 className="font-medium text-foreground">{q.question}</h4>
               <Badge variant="outline" className={cn('shrink-0', getCertaintyColor(q.certainty))}>
@@ -70,7 +70,7 @@ export function AnalysisCard({
             </div>
 
             {q.quotes && q.quotes.length > 0 && <div className="space-y-2 mb-3">
-                <div className="flex items-center gap-1 text-sm font-medium text-foreground border-primary border-2">
+                <div className="flex items-center gap-1 text-sm font-medium text-foreground border-2 border-primary-foreground">
                   <Quote className="h-4 w-4" />
                   Quotes
                 </div>

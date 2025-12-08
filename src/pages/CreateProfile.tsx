@@ -330,7 +330,7 @@ export default function CreateProfile() {
   const countryInfo = getCountryInfo(country);
   return <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto py-8 max-w-5xl px-0">
         <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6 gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
@@ -640,30 +640,23 @@ export default function CreateProfile() {
                             </a>
                           </Button>
                         </div>
-                        {job.job_description && (
-                          <div className="mt-2 pl-14">
+                        {job.job_description && <div className="mt-2 pl-14">
                             <p className={`text-sm text-muted-foreground ${!expandedJobs.has(job.job_id) ? 'line-clamp-2' : ''}`}>
                               {expandedJobs.has(job.job_id) ? job.job_description : job.job_description.slice(0, 200)}
                               {!expandedJobs.has(job.job_id) && job.job_description.length > 200 && '...'}
                             </p>
-                            {job.job_description.length > 200 && (
-                              <button
-                                onClick={() => {
-                                  const newExpanded = new Set(expandedJobs);
-                                  if (newExpanded.has(job.job_id)) {
-                                    newExpanded.delete(job.job_id);
-                                  } else {
-                                    newExpanded.add(job.job_id);
-                                  }
-                                  setExpandedJobs(newExpanded);
-                                }}
-                                className="text-sm text-primary hover:underline mt-1"
-                              >
+                            {job.job_description.length > 200 && <button onClick={() => {
+                    const newExpanded = new Set(expandedJobs);
+                    if (newExpanded.has(job.job_id)) {
+                      newExpanded.delete(job.job_id);
+                    } else {
+                      newExpanded.add(job.job_id);
+                    }
+                    setExpandedJobs(newExpanded);
+                  }} className="text-sm text-primary hover:underline mt-1">
                                 {expandedJobs.has(job.job_id) ? 'Show less' : 'Show more...'}
-                              </button>
-                            )}
-                          </div>
-                        )}
+                              </button>}
+                          </div>}
                       </div>)}
                   </div>
                   
