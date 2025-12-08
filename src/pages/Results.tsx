@@ -15,7 +15,7 @@ import { SearchParams } from '@/types/job';
 export default function Results() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { jobs, loading, searchParams, searchJobs, setJobs } = useJobSearch();
+  const { jobs, loading, translating, searchParams, searchJobs, translateProfile, setJobs } = useJobSearch();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -100,7 +100,12 @@ export default function Results() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <div className="sticky top-4 space-y-4">
-              <SearchForm onSearch={searchJobs} loading={loading} />
+              <SearchForm 
+                onSearch={searchJobs} 
+                onTranslateProfile={(profile, country, language) => translateProfile({ profile, country, language })}
+                loading={loading} 
+                translating={translating}
+              />
               
               {jobs.length > 0 && (
                 <div className="flex flex-col gap-2">

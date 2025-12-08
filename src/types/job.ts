@@ -4,6 +4,17 @@ export interface ApplyOption {
   is_direct: boolean;
 }
 
+export interface ProfileTranslateParams {
+  profile: string;
+  country: string;
+  language: string;
+}
+
+export interface ProfileTranslateResponse {
+  jobTitles: string[];
+  originalProfile: string;
+}
+
 export interface Job {
   job_id: string;
   job_title: string;

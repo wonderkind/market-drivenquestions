@@ -1,7 +1,16 @@
 project_id = "ytyuztdkipxwkzpxtnln"
 
+[api]
+enabled = true
+
 [functions.search-jobs]
-verify_jwt = true
+verify_jwt = false
 
 [functions.analyze-jobs]
-verify_jwt = true
+verify_jwt = false
+
+[functions.translate-profile]
+verify_jwt = false
+
+[auth]
+enabled = true
