@@ -61,6 +61,25 @@ export function useJobSearch() {
       const response = data as SearchResponse;
       setJobs(response.data || []);
       
+      // Auto-save search for logged-in users
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && response.data && response.data.length > 0) {
+        try {
+          await supabase.from('saved_searches').insert({
+            user_id: user.id,
+            job_title: params.query,
+            location: params.location,
+            country: params.country,
+            language: params.language,
+            date_posted: params.date_posted,
+          });
+          console.log('Search saved automatically');
+        } catch (saveError) {
+          // Don't fail the search if saving fails
+          console.error('Failed to auto-save search:', saveError);
+        }
+      }
+      
       toast({
         title: 'Search Complete',
         description: `Found ${response.data?.length || 0} jobs`,

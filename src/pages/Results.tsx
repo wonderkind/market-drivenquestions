@@ -6,10 +6,8 @@ import { SearchForm } from '@/components/SearchForm';
 import { JobList } from '@/components/JobList';
 import { useJobSearch } from '@/hooks/useJobSearch';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Brain, Save, Briefcase } from 'lucide-react';
+import { ArrowLeft, Brain, Briefcase } from 'lucide-react';
 import { SearchParams } from '@/types/job';
 
 export default function Results() {
@@ -17,7 +15,6 @@ export default function Results() {
   const location = useLocation();
   const { jobs, loading, translating, searchParams, searchJobs, translateProfile, setJobs } = useJobSearch();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,52 +33,7 @@ export default function Results() {
       });
       return;
     }
-    navigate('/analysis', { state: { jobs, searchParams } });
-  };
-
-  const handleSaveSearch = async () => {
-    if (!user) {
-      toast({
-        title: 'Sign in required',
-        description: 'Please sign in to save searches',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!searchParams) {
-      toast({
-        title: 'No search to save',
-        description: 'Please perform a search first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('saved_searches').insert({
-        user_id: user.id,
-        job_title: searchParams.query,
-        location: searchParams.location,
-        country: searchParams.country,
-        language: searchParams.language,
-        date_posted: searchParams.date_posted,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Search saved',
-        description: 'You can access this search from your dashboard',
-      });
-    } catch (error) {
-      console.error('Error saving search:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save search',
-        variant: 'destructive',
-      });
-    }
+    navigate('/analysis', { state: { jobs, country: searchParams?.country || 'nl' } });
   };
 
   return (
@@ -108,20 +60,10 @@ export default function Results() {
               />
               
               {jobs.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <Button onClick={handleAnalyze} className="w-full gap-2">
-                    <Brain className="h-4 w-4" />
-                    Analyze Jobs with AI
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleSaveSearch}
-                    className="w-full gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save This Search
-                  </Button>
-                </div>
+                <Button onClick={handleAnalyze} className="w-full gap-2">
+                  <Brain className="h-4 w-4" />
+                  Analyze Jobs with AI
+                </Button>
               )}
             </div>
           </div>
