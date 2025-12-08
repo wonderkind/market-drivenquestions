@@ -78,12 +78,29 @@ export interface SearchResponse {
   data: Job[];
 }
 
+export type AnswerType = 'yes_no' | 'multiple_choice' | 'experience' | 'text';
+
+export interface AnswerOption {
+  label: string;
+  emoji?: string;
+}
+
+export interface ExperienceConfig {
+  min: number;
+  max: number;
+  unit: 'years' | 'months';
+}
+
 export interface AnalysisQuestion {
   question: string;
   mentions: number;
   certainty: 'high' | 'medium' | 'low';
   quotes: string[];
   sources: string[];
+  answerType: AnswerType;
+  options?: AnswerOption[];
+  experienceConfig?: ExperienceConfig;
+  userAnswer?: string | string[] | number | boolean;
 }
 
 export interface AnalysisCategory {

@@ -7,7 +7,8 @@ import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AnalysisResult, SavedQuestionsData } from '@/types/job';
+import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig } from '@/types/job';
+import { QuestionAnswer } from '@/components/QuestionAnswer';
 import {
   ArrowLeft,
   Brain,
@@ -33,6 +34,10 @@ interface AnalysisQuestionLocal {
   relevantQuote?: string;
   quotes?: string[];
   sources: string[];
+  answerType?: AnswerType;
+  options?: AnswerOption[];
+  experienceConfig?: ExperienceConfig;
+  userAnswer?: string | string[] | number | boolean;
 }
 
 interface ProfileData {
@@ -164,6 +169,23 @@ export default function ProfileDetail() {
     setProfile(updatedProfile);
   };
 
+  const handleAnswerChange = (
+    category: 'license' | 'qualification' | 'certification',
+    index: number,
+    answer: string | string[] | number | boolean
+  ) => {
+    if (!profile) return;
+
+    const updatedProfile = { ...profile };
+    const questions = updatedProfile.analysis_data.questions[category]?.questions;
+
+    if (questions && questions[index]) {
+      questions[index].userAnswer = answer;
+    }
+
+    setProfile(updatedProfile);
+  };
+
   const handleSave = async () => {
     if (!profile || !user) return;
 
@@ -264,7 +286,19 @@ export default function ProfileDetail() {
                           </Button>
                         </div>
                       </div>
-                      <div className="mt-2 text-sm text-muted-foreground">
+                      
+                      {/* Answer Input */}
+                      {q.answerType && (
+                        <QuestionAnswer
+                          answerType={q.answerType}
+                          options={q.options}
+                          experienceConfig={q.experienceConfig}
+                          value={q.userAnswer}
+                          onChange={(val) => handleAnswerChange(category, index, val)}
+                        />
+                      )}
+                      
+                      <div className="mt-3 text-sm text-muted-foreground">
                         <p>
                           <span className="font-medium">Certainty:</span> {q.certainty} •{' '}
                           <span className="font-medium">Mentions:</span> {q.mentions}
