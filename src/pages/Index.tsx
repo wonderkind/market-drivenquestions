@@ -6,11 +6,15 @@ import { Brain, Briefcase, Heart, Search } from 'lucide-react';
 
 export default function Index() {
   const navigate = useNavigate();
-  const { searchJobs, loading } = useJobSearch();
+  const { searchJobs, translateProfile, loading, translating } = useJobSearch();
 
   const handleSearch = async (params: Parameters<typeof searchJobs>[0]) => {
     const jobs = await searchJobs(params);
     navigate('/results', { state: { jobs, searchParams: params } });
+  };
+
+  const handleTranslateProfile = async (profile: string, country: string, language: string) => {
+    return await translateProfile({ profile, country, language });
   };
 
   return (
@@ -29,7 +33,12 @@ export default function Index() {
           </p>
 
           <div className="max-w-3xl mx-auto">
-            <SearchForm onSearch={handleSearch} loading={loading} />
+            <SearchForm 
+              onSearch={handleSearch} 
+              onTranslateProfile={handleTranslateProfile}
+              loading={loading} 
+              translating={translating}
+            />
           </div>
         </section>
 
