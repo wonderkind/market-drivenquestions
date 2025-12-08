@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Navigation } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Box } from 'lucide-react';
 const countries = [{
   value: 'nl',
   label: 'Netherlands',
@@ -560,45 +560,19 @@ export default function CreateProfile() {
         {step === 'results' && <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5 text-primary" />
-                  Search Results
-                  {enhanced && <Badge variant="secondary" className="ml-2 gap-1">
-                      <Zap className="h-3 w-3" />
-                      Enhanced
-                    </Badge>}
-                </CardTitle>
-                <CardDescription>
+                
+                <CardDescription className="text-2xl text-primary">
                   Found {jobs.length} jobs for "{profile}" in {countryInfo.flag} {countryInfo.label}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {!enhanced && jobs.length > 0 && <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
-                    <div className="flex items-start gap-3">
-                      <Zap className="h-5 w-5 text-primary mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-foreground mb-1">Enhance with Job Details</h4>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Fetch detailed qualifications and responsibilities for more accurate analysis
-                        </p>
-                        <Button onClick={handleEnhanceWithDetails} variant="outline" size="sm" disabled={enhancing} className="gap-2">
-                          {enhancing ? <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Enhancing...
-                            </> : <>
-                              <Zap className="h-4 w-4" />
-                              Enhance {jobs.length} Jobs
-                            </>}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>}
+                {!enhanced && jobs.length > 0}
                 <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setStep('review')} className="flex-1">
                     ← Modify Search
                   </Button>
                   <Button onClick={handleAnalyze} className="flex-1 gap-2" disabled={jobs.length === 0 || enhancing}>
-                    <Navigation className="h-4 w-4" />
+                    <Box className="h-4 w-4" />
                     Analyze {jobs.length} Jobs
                   </Button>
                 </div>
