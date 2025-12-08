@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,6 +53,50 @@ serve(async (req) => {
 
     const data = await response.json();
     console.log('JSearch response status:', data.status, 'Jobs found:', data.data?.length || 0);
+
+    // Store jobs in database using service role
+    if (data.data && data.data.length > 0) {
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+
+      console.log('Storing', data.data.length, 'jobs in database...');
+
+      for (const job of data.data) {
+        const { error: upsertError } = await supabaseAdmin
+          .from('jobs')
+          .upsert({
+            job_id: job.job_id,
+            job_title: job.job_title,
+            employer_name: job.employer_name,
+            employer_logo: job.employer_logo,
+            employer_website: job.employer_website,
+            job_publisher: job.job_publisher,
+            job_employment_type: job.job_employment_type,
+            job_apply_link: job.job_apply_link,
+            job_description: job.job_description,
+            job_is_remote: job.job_is_remote,
+            job_posted_at: job.job_posted_at,
+            job_location: job.job_location,
+            job_city: job.job_city,
+            job_state: job.job_state,
+            job_country: job.job_country,
+            job_benefits: job.job_benefits,
+            job_min_salary: job.job_min_salary,
+            job_max_salary: job.job_max_salary,
+            job_salary_period: job.job_salary_period,
+            job_highlights: job.job_highlights,
+            enhanced_data_fetched: false,
+          }, { onConflict: 'job_id' });
+
+        if (upsertError) {
+          console.error('Error storing job:', job.job_id, upsertError);
+        }
+      }
+
+      console.log('Jobs stored successfully');
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

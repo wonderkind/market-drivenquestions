@@ -40,6 +40,7 @@ import {
   Clock,
   ExternalLink,
   Languages,
+  Zap,
 } from 'lucide-react';
 
 const countries = [
@@ -78,7 +79,7 @@ export default function CreateProfile() {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { searchJobs, translateProfile, loading, translating } = useJobSearch();
+  const { searchJobs, translateProfile, getJobDetails, loading, translating } = useJobSearch();
 
   const state = location.state as LocationState | undefined;
   const isReanalyseMode = !!state?.profileId;
@@ -100,6 +101,8 @@ export default function CreateProfile() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanced, setEnhanced] = useState(false);
 
   const getCountryInfo = (code: string) => countries.find((c) => c.value === code) || { value: code, label: code.toUpperCase(), flag: '🌍' };
   const getLanguageLabel = (code: string) => languages.find((l) => l.value === code)?.label || code.toUpperCase();
@@ -154,6 +157,48 @@ export default function CreateProfile() {
     setStep('results');
   };
 
+  const handleEnhanceWithDetails = async () => {
+    if (jobs.length === 0) return;
+
+    setEnhancing(true);
+
+    try {
+      const jobIds = jobs.map((job) => job.job_id);
+      const enhancedJobs = await getJobDetails(jobIds, country);
+
+      if (enhancedJobs.length > 0) {
+        // Merge enhanced data back into jobs
+        setJobs((prevJobs) =>
+          prevJobs.map((job) => {
+            const enhanced = enhancedJobs.find((e) => e.job_id === job.job_id);
+            if (enhanced) {
+              return {
+                ...job,
+                job_highlights: enhanced.job_highlights,
+              };
+            }
+            return job;
+          })
+        );
+
+        setEnhanced(true);
+        toast({
+          title: 'Jobs Enhanced',
+          description: `Fetched detailed highlights for ${enhancedJobs.length} jobs`,
+        });
+      }
+    } catch (error) {
+      console.error('Enhance error:', error);
+      toast({
+        title: 'Enhancement Failed',
+        description: 'Failed to fetch enhanced job details',
+        variant: 'destructive',
+      });
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (jobs.length === 0) return;
 
@@ -172,7 +217,7 @@ export default function CreateProfile() {
       const { data, error } = await supabase.functions.invoke('analyze-jobs', {
         body: {
           jobs: jobsToAnalyze,
-          enhanced: false,
+          enhanced: enhanced,
           language,
           country,
           jobTitle: profile,
@@ -186,7 +231,7 @@ export default function CreateProfile() {
 
       toast({
         title: 'Analysis Complete',
-        description: `Analyzed ${data.jobCount} job listings`,
+        description: `Analyzed ${data.jobCount} job listings${enhanced ? ' with enhanced data' : ''}`,
       });
     } catch (error) {
       console.error('Analysis error:', error);
@@ -622,12 +667,50 @@ export default function CreateProfile() {
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5 text-primary" />
                   Search Results
+                  {enhanced && (
+                    <Badge variant="secondary" className="ml-2 gap-1">
+                      <Zap className="h-3 w-3" />
+                      Enhanced
+                    </Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>
                   Found {jobs.length} jobs for "{profile}" in {countryInfo.flag} {countryInfo.label}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {!enhanced && jobs.length > 0 && (
+                  <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
+                    <div className="flex items-start gap-3">
+                      <Zap className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-foreground mb-1">Enhance with Job Details</h4>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Fetch detailed qualifications and responsibilities for more accurate analysis
+                        </p>
+                        <Button
+                          onClick={handleEnhanceWithDetails}
+                          variant="outline"
+                          size="sm"
+                          disabled={enhancing}
+                          className="gap-2"
+                        >
+                          {enhancing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Enhancing...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-4 w-4" />
+                              Enhance {jobs.length} Jobs
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setStep('review')} className="flex-1">
                     ← Modify Search
@@ -635,7 +718,7 @@ export default function CreateProfile() {
                   <Button
                     onClick={handleAnalyze}
                     className="flex-1 gap-2"
-                    disabled={jobs.length === 0}
+                    disabled={jobs.length === 0 || enhancing}
                   >
                     <Brain className="h-4 w-4" />
                     Analyze {jobs.length} Jobs
