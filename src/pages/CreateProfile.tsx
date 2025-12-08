@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Box } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap } from 'lucide-react';
 const countries = [{
   value: 'nl',
   label: 'Netherlands',
@@ -572,7 +572,7 @@ export default function CreateProfile() {
                     ← Modify Search
                   </Button>
                   <Button onClick={handleAnalyze} className="flex-1 gap-2" disabled={jobs.length === 0 || enhancing}>
-                    <Box className="h-4 w-4" />
+                    <Zap className="h-4 w-[25px]" />
                     Analyze {jobs.length} Jobs
                   </Button>
                 </div>
