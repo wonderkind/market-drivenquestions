@@ -106,7 +106,7 @@ export function AnalysisCard({ title, icon, questions, color, onAnswerChange }: 
                   Sources:
                 </div>
                 {q.sources.map((source, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
+                  <Badge key={i} variant="secondary" className="text-xs text-secondary-foreground">
                     {source}
                   </Badge>
                 ))}
