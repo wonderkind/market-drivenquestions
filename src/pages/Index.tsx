@@ -1,20 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
-import { SearchForm } from '@/components/SearchForm';
-import { useJobSearch } from '@/hooks/useJobSearch';
-import { Brain, Briefcase, Heart, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { Brain, Briefcase, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Index() {
   const navigate = useNavigate();
-  const { searchJobs, translateProfile, loading, translating } = useJobSearch();
+  const { user, loading } = useAuth();
 
-  const handleSearch = async (params: Parameters<typeof searchJobs>[0]) => {
-    const jobs = await searchJobs(params);
-    navigate('/results', { state: { jobs, searchParams: params } });
-  };
-
-  const handleTranslateProfile = async (profile: string, country: string, language: string) => {
-    return await translateProfile({ profile, country, language });
+  const handleGetStarted = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
+    }
   };
 
   return (
@@ -23,23 +22,30 @@ export default function Index() {
       
       <main>
         {/* Hero Section */}
-        <section className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4 md:text-5xl">
-            Find Your Dream Job
+        <section className="container mx-auto px-4 py-20 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
+            <Sparkles className="h-4 w-4" />
+            <span className="text-sm font-medium">AI-Powered Job Analysis</span>
+          </div>
+          
+          <h1 className="text-4xl font-bold text-foreground mb-4 md:text-5xl lg:text-6xl">
+            Prepare for Your
+            <span className="text-primary block">Dream Job</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Search thousands of job listings and get AI-powered insights to prepare
-            for your interviews.
+          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+            Create job profiles, analyze requirements with AI, and get tailored
+            interview questions for licenses, qualifications, and certifications.
           </p>
 
-          <div className="max-w-3xl mx-auto">
-            <SearchForm 
-              onSearch={handleSearch} 
-              onTranslateProfile={handleTranslateProfile}
-              loading={loading} 
-              translating={translating}
-            />
-          </div>
+          <Button 
+            size="lg" 
+            onClick={handleGetStarted}
+            disabled={loading}
+            className="gap-2 text-lg px-8 py-6"
+          >
+            Get Started
+            <ArrowRight className="h-5 w-5" />
+          </Button>
         </section>
 
         {/* Features Section */}
@@ -51,14 +57,14 @@ export default function Index() {
           <div className="grid gap-8 md:grid-cols-3">
             <div className="text-center p-6">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Search className="h-8 w-8 text-primary" />
+                <Sparkles className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                1. Search Jobs
+                1. Create Profile
               </h3>
               <p className="text-muted-foreground">
-                Enter your desired job title, location, and preferences to find
-                relevant opportunities.
+                Enter your ONET-SOC profile and let AI generate localized job titles
+                for your target country.
               </p>
             </div>
 
