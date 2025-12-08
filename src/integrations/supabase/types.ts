@@ -183,6 +183,33 @@ export type Database = {
           },
         ]
       }
+      onet_occupations: {
+        Row: {
+          code: string
+          created_at: string | null
+          has_data: boolean | null
+          id: string
+          job_zone: number | null
+          title: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          has_data?: boolean | null
+          id?: string
+          job_zone?: number | null
+          title: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          has_data?: boolean | null
+          id?: string
+          job_zone?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

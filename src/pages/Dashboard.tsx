@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SavedQuestionsData } from '@/types/job';
 import { DashboardFilters, SUPPORTED_COUNTRIES } from '@/components/DashboardFilters';
 import { CountryStatusCell } from '@/components/CountryStatusCell';
-import { Plus, FolderOpen } from 'lucide-react';
+import { FolderOpen, RefreshCw, Loader2 } from 'lucide-react';
 
 interface CountryAnalysis {
   status: 'not_created' | 'analysed';
@@ -27,14 +27,25 @@ interface CountryAnalysis {
   language?: string;
 }
 
+interface OnetOccupation {
+  id: string;
+  code: string;
+  title: string;
+  job_zone: number | null;
+  has_data: boolean;
+}
+
 interface ProfileMatrix {
-  profileName: string;
+  code: string;
+  title: string;
+  jobZone: number | null;
   countries: Record<string, CountryAnalysis>;
 }
 
 export default function Dashboard() {
   const [profilesMatrix, setProfilesMatrix] = useState<ProfileMatrix[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'analysed' | 'not_created'>('all');
   const [countryFilter, setCountryFilter] = useState('all');
@@ -50,29 +61,61 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      fetchProfiles();
+      fetchData();
     }
   }, [user]);
 
-  const fetchProfiles = async () => {
+  const seedOccupations = async () => {
+    setSeeding(true);
+    try {
+      const response = await supabase.functions.invoke('seed-onet-occupations');
+      if (response.error) throw response.error;
+      
+      toast({
+        title: 'Success',
+        description: `Loaded ${response.data?.count || 0} O*NET occupations`,
+      });
+      
+      await fetchData();
+    } catch (error) {
+      console.error('Error seeding occupations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load O*NET occupations',
+        variant: 'destructive',
+      });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const fetchData = async () => {
     if (!user) return;
     setLoading(true);
 
     try {
+      // Fetch all O*NET occupations
+      const { data: occupations, error: occError } = await supabase
+        .from('onet_occupations')
+        .select('*')
+        .order('title');
+
+      if (occError) throw occError;
+
+      // Fetch user's analysis results
       const { data: analysisData, error: analysisError } = await supabase
         .from('analysis_results')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
 
       if (analysisError) throw analysisError;
 
-      // Group analyses by profile name
-      const profileMap = new Map<string, ProfileMatrix>();
-
+      // Create a map of analyses by profile name and country
+      const analysisMap = new Map<string, Map<string, { id: string; questionsCount: number; jobsCount: number; language: string }>>();
+      
       for (const item of analysisData || []) {
         const data = item.analysis_data as unknown as SavedQuestionsData;
-        const profileName = data.profile || 'Unknown Profile';
+        const profileName = (data.profile || '').toLowerCase();
         const country = data.country || 'nl';
         const questions = data.questions || {} as any;
         const questionsCount =
@@ -80,29 +123,50 @@ export default function Dashboard() {
           (questions.qualification?.questions?.length || 0) +
           (questions.certification?.questions?.length || 0);
 
-        if (!profileMap.has(profileName)) {
-          profileMap.set(profileName, {
-            profileName,
-            countries: {},
-          });
+        if (!analysisMap.has(profileName)) {
+          analysisMap.set(profileName, new Map());
         }
-
-        const profile = profileMap.get(profileName)!;
-        profile.countries[country] = {
-          status: 'analysed',
-          analysisId: item.id,
+        
+        analysisMap.get(profileName)!.set(country, {
+          id: item.id,
           questionsCount,
           jobsCount: data.jobsScrapedCount || 0,
           language: data.language || 'en',
-        };
+        });
       }
 
-      setProfilesMatrix(Array.from(profileMap.values()));
+      // Build the matrix combining occupations with analyses
+      const matrix: ProfileMatrix[] = (occupations || []).map((occ: OnetOccupation) => {
+        const occAnalyses = analysisMap.get(occ.title.toLowerCase());
+        const countries: Record<string, CountryAnalysis> = {};
+
+        SUPPORTED_COUNTRIES.forEach((country) => {
+          const analysis = occAnalyses?.get(country.code);
+          if (analysis) {
+            countries[country.code] = {
+              status: 'analysed',
+              analysisId: analysis.id,
+              questionsCount: analysis.questionsCount,
+              jobsCount: analysis.jobsCount,
+              language: analysis.language,
+            };
+          }
+        });
+
+        return {
+          code: occ.code,
+          title: occ.title,
+          jobZone: occ.job_zone,
+          countries,
+        };
+      });
+
+      setProfilesMatrix(matrix);
     } catch (error) {
-      console.error('Error fetching profiles:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load your profiles',
+        description: 'Failed to load profiles',
         variant: 'destructive',
       });
     } finally {
@@ -112,9 +176,12 @@ export default function Dashboard() {
 
   const filteredProfiles = useMemo(() => {
     return profilesMatrix.filter((profile) => {
-      // Search filter
-      if (searchQuery && !profile.profileName.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
+      // Search filter - search in both code and title
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!profile.title.toLowerCase().includes(query) && !profile.code.toLowerCase().includes(query)) {
+          return false;
+        }
       }
 
       // Country filter
@@ -130,7 +197,7 @@ export default function Dashboard() {
           (c) => c.status === 'analysed'
         );
         const hasAnyNotCreated = SUPPORTED_COUNTRIES.some(
-          (c) => !profile.countries[c.code] || profile.countries[c.code].status === 'not_created'
+          (c) => !profile.countries[c.code] || profile.countries[c.code].status !== 'analysed'
         );
 
         if (statusFilter === 'analysed' && !hasAnyAnalysed) return false;
@@ -141,13 +208,14 @@ export default function Dashboard() {
     });
   }, [profilesMatrix, searchQuery, statusFilter, countryFilter]);
 
-  const handleCellClick = (profileName: string, countryCode: string, analysis?: CountryAnalysis) => {
+  const handleCellClick = (profile: ProfileMatrix, countryCode: string, analysis?: CountryAnalysis) => {
     if (analysis?.status === 'analysed' && analysis.analysisId) {
       navigate(`/profile/${analysis.analysisId}`);
     } else {
       navigate('/create-profile', {
         state: {
-          profile: profileName,
+          profile: profile.title,
+          onetCode: profile.code,
           country: countryCode,
           language: countryCode === 'nl' ? 'nl' : countryCode === 'de' ? 'de' : 'en',
         },
@@ -155,9 +223,13 @@ export default function Dashboard() {
     }
   };
 
-  const handleCreate = () => {
-    navigate('/create-profile');
-  };
+  const analysedCount = useMemo(() => {
+    let count = 0;
+    profilesMatrix.forEach((p) => {
+      count += Object.values(p.countries).filter((c) => c.status === 'analysed').length;
+    });
+    return count;
+  }, [profilesMatrix]);
 
   if (authLoading || loading) {
     return (
@@ -183,15 +255,24 @@ export default function Dashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-2xl">
                   <FolderOpen className="h-6 w-6 text-primary" />
-                  ONET-SOC Profiles
+                  O*NET-SOC Occupations
                 </CardTitle>
                 <CardDescription>
-                  {profilesMatrix.length} profile{profilesMatrix.length !== 1 ? 's' : ''} created
+                  {profilesMatrix.length} occupations • {analysedCount} analyses completed
                 </CardDescription>
               </div>
-              <Button onClick={handleCreate} className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Profile
+              <Button 
+                onClick={seedOccupations} 
+                variant="outline" 
+                className="gap-2"
+                disabled={seeding}
+              >
+                {seeding ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {seeding ? 'Loading...' : 'Refresh O*NET Data'}
               </Button>
             </div>
           </CardHeader>
@@ -205,27 +286,34 @@ export default function Dashboard() {
               onCountryFilterChange={setCountryFilter}
             />
 
-            {filteredProfiles.length === 0 ? (
+            {profilesMatrix.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground mb-4">
-                  {profilesMatrix.length === 0 ? 'No profiles yet' : 'No profiles match your filters'}
+                  No O*NET occupations loaded yet
                 </p>
-                {profilesMatrix.length === 0 && (
-                  <Button onClick={handleCreate} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Your First Profile
-                  </Button>
-                )}
+                <Button onClick={seedOccupations} className="gap-2" disabled={seeding}>
+                  {seeding ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Load O*NET Occupations
+                </Button>
+              </div>
+            ) : filteredProfiles.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No occupations match your filters</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[250px]">ONET-SOC Profile</TableHead>
+                      <TableHead className="w-[120px]">Code</TableHead>
+                      <TableHead className="min-w-[250px]">Occupation</TableHead>
                       {SUPPORTED_COUNTRIES.map((country) => (
-                        <TableHead key={country.code} className="text-center min-w-[120px]">
+                        <TableHead key={country.code} className="text-center min-w-[100px]">
                           <span className="flex items-center justify-center gap-1">
                             {country.flag} {country.code.toUpperCase()}
                           </span>
@@ -235,15 +323,18 @@ export default function Dashboard() {
                   </TableHeader>
                   <TableBody>
                     {filteredProfiles.map((profile) => (
-                      <TableRow key={profile.profileName}>
-                        <TableCell className="font-medium">{profile.profileName}</TableCell>
+                      <TableRow key={profile.code}>
+                        <TableCell className="font-mono text-sm text-muted-foreground">
+                          {profile.code}
+                        </TableCell>
+                        <TableCell className="font-medium">{profile.title}</TableCell>
                         {SUPPORTED_COUNTRIES.map((country) => (
                           <TableCell key={country.code} className="p-2">
                             <CountryStatusCell
                               analysis={profile.countries[country.code]}
                               onClick={() =>
                                 handleCellClick(
-                                  profile.profileName,
+                                  profile,
                                   country.code,
                                   profile.countries[country.code]
                                 )
@@ -255,6 +346,9 @@ export default function Dashboard() {
                     ))}
                   </TableBody>
                 </Table>
+                <div className="mt-4 text-sm text-muted-foreground text-center">
+                  Showing {filteredProfiles.length} of {profilesMatrix.length} occupations
+                </div>
               </div>
             )}
           </CardContent>
