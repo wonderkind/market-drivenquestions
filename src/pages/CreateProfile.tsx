@@ -678,7 +678,7 @@ export default function CreateProfile() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5 text-primary" />
+                      <Check className="h-5 w-5 text-primary" />
                       Analysis Complete
                     </CardTitle>
                     <CardDescription>
