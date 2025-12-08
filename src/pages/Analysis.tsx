@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useJobSearch } from '@/hooks/useJobSearch';
 import { useToast } from '@/hooks/use-toast';
 import { Job, AnalysisResult, EnhancedJob, SearchParams, AnalysisMetrics } from '@/types/job';
-import { ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, FileText, Sparkles, AlertCircle, Plus, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, FileText, Sparkles, AlertCircle, Plus, BarChart3, Save } from 'lucide-react';
 
 export default function Analysis() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -19,6 +19,7 @@ export default function Analysis() {
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [metrics, setMetrics] = useState<AnalysisMetrics | null>(null);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -28,6 +29,8 @@ export default function Analysis() {
   const initialJobs = state?.jobs || [];
   const country = state?.country || 'nl';
   const searchParams = state?.searchParams;
+  const language = searchParams?.language || 'en';
+  const jobTitle = searchParams?.query || 'this position';
 
   useEffect(() => {
     if (initialJobs.length === 0) {
@@ -77,6 +80,9 @@ export default function Analysis() {
         body: {
           jobs: jobsToAnalyze,
           enhanced,
+          language,
+          country,
+          jobTitle,
         },
       });
 
@@ -473,15 +479,68 @@ export default function Analysis() {
               )}
             </div>
 
-            <Button
-              onClick={() => runAnalysis(isEnhanced)}
-              variant="outline"
-              className="w-full gap-2"
-              disabled={loading || enhancedLoading || loadingMore}
-            >
-              <Brain className="h-4 w-4" />
-              Run Analysis Again
-            </Button>
+            <div className="flex gap-4">
+              <Button
+                onClick={() => runAnalysis(isEnhanced)}
+                variant="outline"
+                className="flex-1 gap-2"
+                disabled={loading || enhancedLoading || loadingMore || saving}
+              >
+                <Brain className="h-4 w-4" />
+                Run Analysis Again
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) {
+                      toast({
+                        title: 'Please log in',
+                        description: 'You need to be logged in to save questions',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+
+                    await supabase.from('analysis_results').insert({
+                      user_id: user.id,
+                      analysis_data: JSON.parse(JSON.stringify({
+                        questions: analysis,
+                        profile: jobTitle,
+                        country,
+                        language,
+                        savedAt: new Date().toISOString(),
+                      })),
+                    });
+
+                    toast({
+                      title: 'Questions saved!',
+                      description: `Saved questions for "${jobTitle}" in your dashboard`,
+                    });
+                  } catch (error) {
+                    console.error('Save error:', error);
+                    toast({
+                      title: 'Failed to save',
+                      description: 'Could not save questions. Please try again.',
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="flex-1 gap-2"
+                disabled={loading || enhancedLoading || loadingMore || saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Questions for {jobTitle}
+              </Button>
+            </div>
           </div>
         )}
       </main>
