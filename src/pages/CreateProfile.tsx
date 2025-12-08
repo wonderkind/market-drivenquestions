@@ -298,13 +298,23 @@ export default function CreateProfile() {
       }
 
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save error:', error);
-      toast({
-        title: 'Failed to save',
-        description: 'Could not save questions. Please try again.',
-        variant: 'destructive',
-      });
+      
+      // Check for unique constraint violation (duplicate profile)
+      if (error?.code === '23505') {
+        toast({
+          title: 'Profile already exists',
+          description: `A profile for "${profile}" in ${getCountryInfo(country).label} (${getLanguageLabel(language)}) already exists. Use "Re-analyse" from the dashboard to update it.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Failed to save',
+          description: 'Could not save questions. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setSaving(false);
     }

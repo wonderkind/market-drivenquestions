@@ -24,7 +24,7 @@ serve(async (req) => {
     const params = new URLSearchParams({
       query: query || '',
       page: String(page),
-      num_pages: '1',
+      num_pages: '5',
       date_posted: date_posted || 'all',
       country: country || 'nl',
       language: language || 'en',
