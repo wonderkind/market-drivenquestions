@@ -112,3 +112,11 @@ export interface AnalysisMetrics {
     certification: number;
   };
 }
+
+export interface SavedQuestionsData {
+  questions: AnalysisResult;
+  profile: string;
+  country: string;
+  language: string;
+  savedAt: string;
+}

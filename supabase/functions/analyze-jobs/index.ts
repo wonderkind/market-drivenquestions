@@ -25,7 +25,13 @@ serve(async (req) => {
   }
 
   try {
-    const { jobs, enhanced } = await req.json() as { jobs: Job[]; enhanced?: boolean };
+    const { jobs, enhanced, language, country, jobTitle } = await req.json() as { 
+      jobs: Job[]; 
+      enhanced?: boolean;
+      language?: string;
+      country?: string;
+      jobTitle?: string;
+    };
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -63,7 +69,38 @@ serve(async (req) => {
       return summary;
     }).join('\n\n---\n\n');
 
+    // Determine output language
+    const outputLanguage = language === 'nl' ? 'Dutch' : 'English';
+    const profileName = jobTitle || 'this position';
+
     const systemPrompt = `You are an expert job market analyst specializing in Dutch/European labor requirements. Analyze job descriptions and extract requirements into three DISTINCT categories.
+
+## OUTPUT LANGUAGE
+Generate ALL interview questions in **${outputLanguage}**.
+${language === 'nl' ? 'Use natural Dutch phrasing and expressions. Write as a native Dutch speaker would.' : ''}
+
+## QUESTION STYLE (Gen-Z Friendly)
+Write questions that are:
+- Direct and conversational (no corporate-speak or formal language)
+- Action-oriented, starting with "Please specify...", "Please indicate...", "Do you have..."
+- Practical with real-world examples when relevant
+- Friendly and relatable
+
+${language === 'nl' ? `
+Examples of the Gen-Z friendly Dutch tone:
+- "Geef aan welke ervaring je hebt als ${profileName}."
+- "Welke materialen heb je eerder mee gewerkt als ${profileName}?"
+- "Ben je geboren in de EU? Zoals Nederland of een ander EU-land?"
+- "Heb je een geldig rijbewijs? Bijvoorbeeld Rijbewijs B of hoger?"
+- "Welke certificaten heb je behaald? Zoals VCA of BHV?"
+` : `
+Examples of the Gen-Z friendly English tone:
+- "Please specify your experience as a ${profileName}."
+- "Please indicate which materials you have worked with as a ${profileName}?"
+- "Were you born in the EU? Like The Netherlands or another EU country?"
+- "Do you have a valid driver's license? Like category B or higher?"
+- "Which certifications do you have? Like VCA or first aid?"
+`}
 
 ## CATEGORY DEFINITIONS (CRITICAL - Read Carefully)
 
@@ -121,7 +158,7 @@ Return your analysis as a JSON object with this exact structure:
   "license": {
     "questions": [
       {
-        "question": "The interview question",
+        "question": "The interview question in ${outputLanguage}",
         "mentions": <number of jobs mentioning this requirement>,
         "certainty": "<high/medium/low>",
         "quotes": ["Quote 1 from job description", "Quote 2"],
@@ -135,7 +172,7 @@ Return your analysis as a JSON object with this exact structure:
   "certification": {
     "questions": [...]
   },
-  "summary": "Brief overall summary of requirements trends"
+  "summary": "Brief overall summary of requirements trends in ${outputLanguage}"
 }
 
 Be specific with quotes - use actual text from the job descriptions. Include the employer name in sources.`;
