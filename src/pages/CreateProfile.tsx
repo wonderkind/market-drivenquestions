@@ -647,7 +647,7 @@ export default function CreateProfile() {
                       <Check className="h-5 w-5 text-primary" />
                       Analysis Complete
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-2xl bg-primary-foreground text-primary">
                       Analyzed {jobs.length} jobs for "{profile}"
                     </CardDescription>
                   </CardHeader>
