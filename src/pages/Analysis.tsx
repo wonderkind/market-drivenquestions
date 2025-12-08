@@ -6,17 +6,21 @@ import { Header } from '@/components/Header';
 import { AnalysisCard } from '@/components/AnalysisCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Job, AnalysisResult } from '@/types/job';
-import { ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, FileText } from 'lucide-react';
+import { Job, AnalysisResult, EnhancedJob } from '@/types/job';
+import { ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, FileText, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function Analysis() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enhancedLoading, setEnhancedLoading] = useState(false);
+  const [isEnhanced, setIsEnhanced] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
-  const jobs = (location.state as { jobs?: Job[] })?.jobs || [];
+  const state = location.state as { jobs?: Job[]; country?: string } | undefined;
+  const jobs = state?.jobs || [];
+  const country = state?.country || 'nl';
 
   useEffect(() => {
     if (jobs.length === 0) {
@@ -24,8 +28,8 @@ export default function Analysis() {
     }
   }, [jobs, navigate]);
 
-  const runAnalysis = async () => {
-    if (jobs.length === 0) {
+  const runAnalysis = async (enhanced = false, enhancedJobs?: EnhancedJob[]) => {
+    if (jobs.length === 0 && !enhancedJobs) {
       toast({
         title: 'No jobs to analyze',
         description: 'Please go back and search for jobs first',
@@ -34,18 +38,26 @@ export default function Analysis() {
       return;
     }
 
-    setLoading(true);
+    if (enhanced) {
+      setEnhancedLoading(true);
+    } else {
+      setLoading(true);
+    }
     setAnalysis(null);
 
     try {
+      const jobsToAnalyze = enhancedJobs || jobs.map((job) => ({
+        job_id: job.job_id,
+        job_title: job.job_title,
+        employer_name: job.employer_name,
+        job_description: job.job_description,
+        job_highlights: job.job_highlights,
+      }));
+
       const { data, error } = await supabase.functions.invoke('analyze-jobs', {
         body: {
-          jobs: jobs.map((job) => ({
-            job_id: job.job_id,
-            job_title: job.job_title,
-            employer_name: job.employer_name,
-            job_description: job.job_description,
-          })),
+          jobs: jobsToAnalyze,
+          enhanced,
         },
       });
 
@@ -56,9 +68,10 @@ export default function Analysis() {
       }
 
       setAnalysis(data.analysis);
+      setIsEnhanced(enhanced);
       toast({
-        title: 'Analysis Complete',
-        description: `Analyzed ${data.jobCount} job listings`,
+        title: enhanced ? 'Enhanced Analysis Complete' : 'Analysis Complete',
+        description: `Analyzed ${data.jobCount} job listings${enhanced ? ' with detailed requirements' : ''}`,
       });
     } catch (error) {
       console.error('Analysis error:', error);
@@ -69,6 +82,53 @@ export default function Analysis() {
       });
     } finally {
       setLoading(false);
+      setEnhancedLoading(false);
+    }
+  };
+
+  const runEnhancedAnalysis = async () => {
+    setEnhancedLoading(true);
+    
+    try {
+      // First, fetch detailed job data
+      toast({
+        title: 'Fetching job details...',
+        description: `Getting detailed requirements for ${jobs.length} jobs`,
+      });
+
+      const jobIds = jobs.map(job => job.job_id);
+      
+      const { data, error } = await supabase.functions.invoke('get-job-details', {
+        body: { jobIds, country },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const enhancedJobs = data.jobs as EnhancedJob[];
+      
+      if (enhancedJobs.length === 0) {
+        throw new Error('Could not fetch detailed job data');
+      }
+
+      toast({
+        title: 'Running enhanced analysis...',
+        description: `Processing ${enhancedJobs.length} jobs with structured requirements`,
+      });
+
+      // Now run analysis with enhanced data
+      await runAnalysis(true, enhancedJobs);
+    } catch (error) {
+      console.error('Enhanced analysis error:', error);
+      toast({
+        title: 'Enhanced Analysis Failed',
+        description: error instanceof Error ? error.message : 'Failed to run enhanced analysis',
+        variant: 'destructive',
+      });
+      setEnhancedLoading(false);
     }
   };
 
@@ -89,6 +149,12 @@ export default function Analysis() {
           <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
             <Brain className="h-8 w-8 text-primary" />
             AI Job Analysis
+            {isEnhanced && (
+              <span className="text-sm font-normal bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Enhanced
+              </span>
+            )}
           </h1>
           <p className="text-muted-foreground">
             Analyze {jobs.length} job listings to discover common requirements and prepare
@@ -96,7 +162,7 @@ export default function Analysis() {
           </p>
         </div>
 
-        {!analysis && !loading && (
+        {!analysis && !loading && !enhancedLoading && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Ready to Analyze</CardTitle>
@@ -111,7 +177,7 @@ export default function Analysis() {
                   <div>
                     <h4 className="font-medium text-foreground">License Requirements</h4>
                     <p className="text-sm text-muted-foreground">
-                      Driving licenses and permits mentioned
+                      Government-issued licenses (Rijbewijs, BIG, ADR)
                     </p>
                   </div>
                 </div>
@@ -129,13 +195,13 @@ export default function Analysis() {
                   <div>
                     <h4 className="font-medium text-foreground">Certifications</h4>
                     <p className="text-sm text-muted-foreground">
-                      Professional certifications required
+                      Industry certifications (VCA, BHV, Heftruck)
                     </p>
                   </div>
                 </div>
               </div>
 
-              <Button onClick={runAnalysis} className="w-full gap-2" size="lg">
+              <Button onClick={() => runAnalysis(false)} className="w-full gap-2" size="lg">
                 <Brain className="h-5 w-5" />
                 Start AI Analysis
               </Button>
@@ -143,13 +209,18 @@ export default function Analysis() {
           </Card>
         )}
 
-        {loading && (
+        {(loading || enhancedLoading) && (
           <Card className="mb-8">
             <CardContent className="py-12 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground">Analyzing Job Listings</h3>
+              <h3 className="text-lg font-medium text-foreground">
+                {enhancedLoading ? 'Running Enhanced Analysis' : 'Analyzing Job Listings'}
+              </h3>
               <p className="text-muted-foreground">
-                Our AI is reading through {jobs.length} job descriptions...
+                {enhancedLoading 
+                  ? 'Fetching detailed job requirements for more accurate results...'
+                  : `Our AI is reading through ${jobs.length} job descriptions...`
+                }
               </p>
             </CardContent>
           </Card>
@@ -194,8 +265,39 @@ export default function Analysis() {
               />
             </div>
 
+            {/* Enhanced Analysis Option */}
+            {!isEnhanced && (
+              <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <AlertCircle className="h-5 w-5 text-primary" />
+                    Not satisfied with the analysis?
+                  </CardTitle>
+                  <CardDescription>
+                    Run an Enhanced Analysis that fetches detailed, structured job requirements 
+                    from each listing for more accurate classification.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={runEnhancedAnalysis} 
+                    variant="outline"
+                    className="w-full gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                    disabled={enhancedLoading}
+                  >
+                    {enhancedLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    Run Enhanced Analysis
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <Button
-              onClick={runAnalysis}
+              onClick={() => runAnalysis(isEnhanced)}
               variant="outline"
               className="w-full gap-2"
             >
