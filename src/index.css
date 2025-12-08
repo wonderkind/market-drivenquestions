@@ -30,6 +30,9 @@ All colors MUST be HSL.
     --accent: 214 51.1111% 91.1765%;
     --accent-foreground: 226 33.8129% 27.2549%;
 
+    --brand: 205 85% 93%;
+    --brand-foreground: 226 33.8129% 27.2549%;
+
     --destructive: 27 24.5% 57.7%;
     --destructive-foreground: 0 0% 100%;
 
@@ -115,6 +118,9 @@ All colors MUST be HSL.
 
     --accent: 260 4.1% 27.9%;
     --accent-foreground: 248 0.3% 98.4%;
+
+    --brand: 205 60% 30%;
+    --brand-foreground: 248 0.3% 98.4%;
 
     --destructive: 22 19.1% 70.4%;
     --destructive-foreground: 248 0.3% 98.4%;
