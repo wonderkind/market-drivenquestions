@@ -245,6 +245,23 @@ export default function CreateProfile() {
     }
   };
 
+  const handleAnswerChange = (
+    category: 'license' | 'qualification' | 'certification',
+    index: number,
+    answer: string | string[] | number | boolean
+  ) => {
+    if (!analysis) return;
+
+    const updatedAnalysis = { ...analysis };
+    const questions = updatedAnalysis[category]?.questions;
+
+    if (questions && questions[index]) {
+      questions[index].userAnswer = answer;
+    }
+
+    setAnalysis(updatedAnalysis);
+  };
+
   const handleSave = async () => {
     if (!analysis || !user) {
       toast({
@@ -867,6 +884,7 @@ export default function CreateProfile() {
                   icon={<Car className="h-5 w-5 text-blue-500" />}
                   questions={analysis.license?.questions || []}
                   color="border-l-4 border-l-blue-500"
+                  onAnswerChange={(idx, val) => handleAnswerChange('license', idx, val)}
                 />
 
                 <AnalysisCard
@@ -874,6 +892,7 @@ export default function CreateProfile() {
                   icon={<GraduationCap className="h-5 w-5 text-green-500" />}
                   questions={analysis.qualification?.questions || []}
                   color="border-l-4 border-l-green-500"
+                  onAnswerChange={(idx, val) => handleAnswerChange('qualification', idx, val)}
                 />
 
                 <AnalysisCard
@@ -881,6 +900,7 @@ export default function CreateProfile() {
                   icon={<Award className="h-5 w-5 text-purple-500" />}
                   questions={analysis.certification?.questions || []}
                   color="border-l-4 border-l-purple-500"
+                  onAnswerChange={(idx, val) => handleAnswerChange('certification', idx, val)}
                 />
               </>
             ) : null}

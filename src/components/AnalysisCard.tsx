@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnalysisQuestion } from '@/types/job';
+import { QuestionAnswer } from '@/components/QuestionAnswer';
 import { FileText, Quote, Building, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -9,9 +10,10 @@ interface AnalysisCardProps {
   icon: React.ReactNode;
   questions: AnalysisQuestion[];
   color: string;
+  onAnswerChange?: (index: number, answer: string | string[] | number | boolean) => void;
 }
 
-export function AnalysisCard({ title, icon, questions, color }: AnalysisCardProps) {
+export function AnalysisCard({ title, icon, questions, color, onAnswerChange }: AnalysisCardProps) {
   const getCertaintyColor = (certainty: string) => {
     switch (certainty) {
       case 'high':
@@ -62,7 +64,18 @@ export function AnalysisCard({ title, icon, questions, color }: AnalysisCardProp
               </Badge>
             </div>
 
-            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+            {/* Answer Input */}
+            {q.answerType && (
+              <QuestionAnswer
+                answerType={q.answerType}
+                options={q.options}
+                experienceConfig={q.experienceConfig}
+                value={q.userAnswer}
+                onChange={(val) => onAnswerChange?.(index, val)}
+              />
+            )}
+
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3 mt-3">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-4 w-4" />
                 Mentioned in {q.mentions} jobs
