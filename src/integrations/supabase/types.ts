@@ -91,6 +91,98 @@ export type Database = {
         }
         Relationships: []
       }
+      jobs: {
+        Row: {
+          created_at: string
+          employer_logo: string | null
+          employer_name: string | null
+          employer_website: string | null
+          enhanced_data_fetched: boolean | null
+          id: string
+          job_apply_link: string | null
+          job_benefits: string[] | null
+          job_city: string | null
+          job_country: string | null
+          job_description: string | null
+          job_employment_type: string | null
+          job_highlights: Json | null
+          job_id: string
+          job_is_remote: boolean | null
+          job_location: string | null
+          job_max_salary: number | null
+          job_min_salary: number | null
+          job_posted_at: string | null
+          job_publisher: string | null
+          job_salary_period: string | null
+          job_state: string | null
+          job_title: string
+          search_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          employer_logo?: string | null
+          employer_name?: string | null
+          employer_website?: string | null
+          enhanced_data_fetched?: boolean | null
+          id?: string
+          job_apply_link?: string | null
+          job_benefits?: string[] | null
+          job_city?: string | null
+          job_country?: string | null
+          job_description?: string | null
+          job_employment_type?: string | null
+          job_highlights?: Json | null
+          job_id: string
+          job_is_remote?: boolean | null
+          job_location?: string | null
+          job_max_salary?: number | null
+          job_min_salary?: number | null
+          job_posted_at?: string | null
+          job_publisher?: string | null
+          job_salary_period?: string | null
+          job_state?: string | null
+          job_title: string
+          search_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          employer_logo?: string | null
+          employer_name?: string | null
+          employer_website?: string | null
+          enhanced_data_fetched?: boolean | null
+          id?: string
+          job_apply_link?: string | null
+          job_benefits?: string[] | null
+          job_city?: string | null
+          job_country?: string | null
+          job_description?: string | null
+          job_employment_type?: string | null
+          job_highlights?: Json | null
+          job_id?: string
+          job_is_remote?: boolean | null
+          job_location?: string | null
+          job_max_salary?: number | null
+          job_min_salary?: number | null
+          job_posted_at?: string | null
+          job_publisher?: string | null
+          job_salary_period?: string | null
+          job_state?: string | null
+          job_title?: string
+          search_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "saved_searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

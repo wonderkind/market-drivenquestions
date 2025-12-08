@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,11 @@ serve(async (req) => {
 
     console.log(`Fetching details for ${jobIds.length} jobs`);
 
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
     const jobDetails: JobDetailsResponse[] = [];
     
     // Fetch job details for each job ID (with rate limiting consideration)
@@ -67,17 +73,32 @@ serve(async (req) => {
         const job = data.data?.[0];
         
         if (job) {
+          const jobHighlights = {
+            Qualifications: job.job_highlights?.Qualifications || [],
+            Responsibilities: job.job_highlights?.Responsibilities || [],
+            Benefits: job.job_highlights?.Benefits || [],
+          };
+
           jobDetails.push({
             job_id: job.job_id,
             job_title: job.job_title,
             employer_name: job.employer_name,
             job_description: job.job_description,
-            job_highlights: {
-              Qualifications: job.job_highlights?.Qualifications || [],
-              Responsibilities: job.job_highlights?.Responsibilities || [],
-              Benefits: job.job_highlights?.Benefits || [],
-            },
+            job_highlights: jobHighlights,
           });
+
+          // Update the job in database with enhanced data
+          const { error: updateError } = await supabaseAdmin
+            .from('jobs')
+            .update({
+              job_highlights: jobHighlights,
+              enhanced_data_fetched: true,
+            })
+            .eq('job_id', jobId);
+
+          if (updateError) {
+            console.error('Error updating job:', jobId, updateError);
+          }
         }
         
         // Small delay to avoid rate limiting
