@@ -70,6 +70,7 @@ interface LocationState {
   profile?: string;
   country?: string;
   language?: string;
+  profileId?: string;
 }
 
 export default function CreateProfile() {
@@ -80,6 +81,7 @@ export default function CreateProfile() {
   const { searchJobs, translateProfile, loading, translating } = useJobSearch();
 
   const state = location.state as LocationState | undefined;
+  const isReanalyseMode = !!state?.profileId;
   const hasPrefilledData = !!(state?.profile || state?.country || state?.language);
 
   // Form state
@@ -210,24 +212,45 @@ export default function CreateProfile() {
 
     setSaving(true);
     try {
-      await supabase.from('analysis_results').insert({
-        user_id: user.id,
-        analysis_data: JSON.parse(
-          JSON.stringify({
-            questions: analysis,
-            profile,
-            country,
-            language,
-            jobsScrapedCount: jobs.length,
-            savedAt: new Date().toISOString(),
-          })
-        ),
-      });
+      const analysisData = JSON.parse(
+        JSON.stringify({
+          questions: analysis,
+          profile,
+          country,
+          language,
+          jobsScrapedCount: jobs.length,
+          savedAt: new Date().toISOString(),
+        })
+      );
 
-      toast({
-        title: 'Profile saved!',
-        description: `Saved questions for "${profile}" to your dashboard`,
-      });
+      if (isReanalyseMode && state?.profileId) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('analysis_results')
+          .update({ analysis_data: analysisData })
+          .eq('id', state.profileId)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+
+        toast({
+          title: 'Profile updated!',
+          description: `Updated questions for "${profile}"`,
+        });
+      } else {
+        // Insert new profile
+        const { error } = await supabase.from('analysis_results').insert({
+          user_id: user.id,
+          analysis_data: analysisData,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Profile saved!',
+          description: `Saved questions for "${profile}" to your dashboard`,
+        });
+      }
 
       navigate('/dashboard');
     } catch (error) {
@@ -254,9 +277,13 @@ export default function CreateProfile() {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Create New Profile</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {isReanalyseMode ? 'Re-analyse Profile' : 'Create New Profile'}
+          </h1>
           <p className="text-muted-foreground">
-            Search for jobs, analyze requirements, and save interview questions.
+            {isReanalyseMode 
+              ? 'Run a fresh analysis on this profile with updated job data.'
+              : 'Search for jobs, analyze requirements, and save interview questions.'}
           </p>
         </div>
 
@@ -725,7 +752,7 @@ export default function CreateProfile() {
                         ) : (
                           <Save className="h-4 w-4" />
                         )}
-                        Save Profile
+                        {isReanalyseMode ? 'Update Profile' : 'Save Profile'}
                       </Button>
                     </div>
                   </CardContent>

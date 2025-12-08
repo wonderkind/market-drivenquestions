@@ -146,12 +146,27 @@ Examples of the Gen-Z friendly English tone:
 - Education levels are QUALIFICATIONS
 - Years of experience are QUALIFICATIONS
 
+## CRITICAL QUESTION FORMATTING RULES
+
+**NEVER combine multiple questions into one.** Each question must be a single, focused inquiry.
+
+❌ BAD EXAMPLES (compound questions - NEVER do this):
+- "Do you have a valid Class A CDL, and where was it issued?"
+- "What certifications do you have, and when did you obtain them?"
+- "Do you have a driver's license and experience operating heavy machinery?"
+
+✅ GOOD EXAMPLES (single focused questions):
+- "Do you have a valid Class A CDL?"
+- "Which certifications have you obtained?"
+- "Do you have a driver's license?"
+
 ## OUTPUT INSTRUCTIONS
 
 For each category, provide maximum 2 suggested interview questions that a job seeker should prepare for:
 - **License questions**: Focus on validity, renewal dates, endorsements, legal compliance
 - **Certification questions**: Focus on when obtained, expiration, practical experience using it
 - **Qualification questions**: Focus on depth of experience, education relevance, language proficiency
+- **IMPORTANT**: Each question must ask about ONE thing only. Never use "and" or commas to combine multiple questions.
 
 Return your analysis as a JSON object with this exact structure:
 {
