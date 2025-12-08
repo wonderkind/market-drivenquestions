@@ -14,7 +14,140 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_results: {
+        Row: {
+          analysis_data: Json
+          created_at: string
+          id: string
+          search_id: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_data: Json
+          created_at?: string
+          id?: string
+          search_id?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_data?: Json
+          created_at?: string
+          id?: string
+          search_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "saved_searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorite_jobs: {
+        Row: {
+          created_at: string
+          employer_logo: string | null
+          employer_name: string | null
+          id: string
+          job_apply_link: string | null
+          job_description: string | null
+          job_employment_type: string | null
+          job_id: string
+          job_location: string | null
+          job_posted_at: string | null
+          job_title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employer_logo?: string | null
+          employer_name?: string | null
+          id?: string
+          job_apply_link?: string | null
+          job_description?: string | null
+          job_employment_type?: string | null
+          job_id: string
+          job_location?: string | null
+          job_posted_at?: string | null
+          job_title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          employer_logo?: string | null
+          employer_name?: string | null
+          id?: string
+          job_apply_link?: string | null
+          job_description?: string | null
+          job_employment_type?: string | null
+          job_id?: string
+          job_location?: string | null
+          job_posted_at?: string | null
+          job_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_searches: {
+        Row: {
+          country: string
+          created_at: string
+          date_posted: string
+          id: string
+          job_title: string
+          language: string
+          location: string | null
+          user_id: string
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          date_posted?: string
+          id?: string
+          job_title: string
+          language?: string
+          location?: string | null
+          user_id: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          date_posted?: string
+          id?: string
+          job_title?: string
+          language?: string
+          location?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
