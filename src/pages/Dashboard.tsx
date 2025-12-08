@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,38 +15,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SavedQuestionsData } from '@/types/job';
-import { Plus, FolderOpen, Globe, Languages, MessageSquare, Briefcase, Trash2, RefreshCw } from 'lucide-react';
+import { DashboardFilters, SUPPORTED_COUNTRIES } from '@/components/DashboardFilters';
+import { CountryStatusCell } from '@/components/CountryStatusCell';
+import { Plus, FolderOpen } from 'lucide-react';
 
-interface ProfileCatalogItem {
-  id: string;
-  profile: string;
-  country: string;
-  language: string;
-  questionsCount: number;
-  jobsCount: number;
-  createdAt: string;
-  type: 'analysis' | 'search';
+interface CountryAnalysis {
+  status: 'not_created' | 'analysed';
+  analysisId?: string;
+  questionsCount?: number;
+  jobsCount?: number;
+  language?: string;
 }
 
-const countries: Record<string, { label: string; flag: string }> = {
-  nl: { label: 'NL', flag: '🇳🇱' },
-  de: { label: 'DE', flag: '🇩🇪' },
-  be: { label: 'BE', flag: '🇧🇪' },
-  gb: { label: 'GB', flag: '🇬🇧' },
-  us: { label: 'US', flag: '🇺🇸' },
-  fr: { label: 'FR', flag: '🇫🇷' },
-};
-
-const languageLabels: Record<string, string> = {
-  en: 'EN',
-  nl: 'NL',
-  de: 'DE',
-  fr: 'FR',
-};
+interface ProfileMatrix {
+  profileName: string;
+  countries: Record<string, CountryAnalysis>;
+}
 
 export default function Dashboard() {
-  const [profiles, setProfiles] = useState<ProfileCatalogItem[]>([]);
+  const [profilesMatrix, setProfilesMatrix] = useState<ProfileMatrix[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'analysed' | 'not_created'>('all');
+  const [countryFilter, setCountryFilter] = useState('all');
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -68,7 +59,6 @@ export default function Dashboard() {
     setLoading(true);
 
     try {
-      // Fetch analysis results (saved profiles with questions)
       const { data: analysisData, error: analysisError } = await supabase
         .from('analysis_results')
         .select('*')
@@ -77,27 +67,37 @@ export default function Dashboard() {
 
       if (analysisError) throw analysisError;
 
-      const catalogItems: ProfileCatalogItem[] = (analysisData || []).map((item) => {
+      // Group analyses by profile name
+      const profileMap = new Map<string, ProfileMatrix>();
+
+      for (const item of analysisData || []) {
         const data = item.analysis_data as unknown as SavedQuestionsData;
+        const profileName = data.profile || 'Unknown Profile';
+        const country = data.country || 'nl';
         const questions = data.questions || {} as any;
         const questionsCount =
           (questions.license?.questions?.length || 0) +
           (questions.qualification?.questions?.length || 0) +
           (questions.certification?.questions?.length || 0);
 
-        return {
-          id: item.id,
-          profile: data.profile || 'Unknown Profile',
-          country: data.country || 'nl',
-          language: data.language || 'en',
+        if (!profileMap.has(profileName)) {
+          profileMap.set(profileName, {
+            profileName,
+            countries: {},
+          });
+        }
+
+        const profile = profileMap.get(profileName)!;
+        profile.countries[country] = {
+          status: 'analysed',
+          analysisId: item.id,
           questionsCount,
           jobsCount: data.jobsScrapedCount || 0,
-          createdAt: item.created_at,
-          type: 'analysis' as const,
+          language: data.language || 'en',
         };
-      });
+      }
 
-      setProfiles(catalogItems);
+      setProfilesMatrix(Array.from(profileMap.values()));
     } catch (error) {
       console.error('Error fetching profiles:', error);
       toast({
@@ -110,43 +110,53 @@ export default function Dashboard() {
     }
   };
 
-  const handleRowClick = (item: ProfileCatalogItem) => {
-    navigate(`/profile/${item.id}`);
+  const filteredProfiles = useMemo(() => {
+    return profilesMatrix.filter((profile) => {
+      // Search filter
+      if (searchQuery && !profile.profileName.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+
+      // Country filter
+      if (countryFilter !== 'all') {
+        const hasCountry = profile.countries[countryFilter]?.status === 'analysed';
+        if (statusFilter === 'analysed' && !hasCountry) return false;
+        if (statusFilter === 'not_created' && hasCountry) return false;
+      }
+
+      // Status filter (when no country filter)
+      if (countryFilter === 'all' && statusFilter !== 'all') {
+        const hasAnyAnalysed = Object.values(profile.countries).some(
+          (c) => c.status === 'analysed'
+        );
+        const hasAnyNotCreated = SUPPORTED_COUNTRIES.some(
+          (c) => !profile.countries[c.code] || profile.countries[c.code].status === 'not_created'
+        );
+
+        if (statusFilter === 'analysed' && !hasAnyAnalysed) return false;
+        if (statusFilter === 'not_created' && !hasAnyNotCreated) return false;
+      }
+
+      return true;
+    });
+  }, [profilesMatrix, searchQuery, statusFilter, countryFilter]);
+
+  const handleCellClick = (profileName: string, countryCode: string, analysis?: CountryAnalysis) => {
+    if (analysis?.status === 'analysed' && analysis.analysisId) {
+      navigate(`/profile/${analysis.analysisId}`);
+    } else {
+      navigate('/create-profile', {
+        state: {
+          profile: profileName,
+          country: countryCode,
+          language: countryCode === 'nl' ? 'nl' : countryCode === 'de' ? 'de' : 'en',
+        },
+      });
+    }
   };
 
   const handleCreate = () => {
     navigate('/create-profile');
-  };
-
-  const handleReanalyse = (item: ProfileCatalogItem) => {
-    navigate('/create-profile', {
-      state: {
-        profile: item.profile,
-        country: item.country,
-        language: item.language,
-        profileId: item.id,
-      },
-    });
-  };
-
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-
-    try {
-      const { error } = await supabase.from('analysis_results').delete().eq('id', id);
-
-      if (error) throw error;
-
-      setProfiles((prev) => prev.filter((p) => p.id !== id));
-      toast({ title: 'Profile deleted' });
-    } catch (error) {
-      console.error('Error deleting profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete profile',
-        variant: 'destructive',
-      });
-    }
   };
 
   if (authLoading || loading) {
@@ -173,112 +183,79 @@ export default function Dashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-2xl">
                   <FolderOpen className="h-6 w-6 text-primary" />
-                  Profiles Catalog
+                  ONET-SOC Profiles
                 </CardTitle>
                 <CardDescription>
-                  {profiles.length} profile{profiles.length !== 1 ? 's' : ''} saved
+                  {profilesMatrix.length} profile{profilesMatrix.length !== 1 ? 's' : ''} created
                 </CardDescription>
               </div>
-              <Button onClick={() => handleCreate()} className="gap-2">
+              <Button onClick={handleCreate} className="gap-2">
                 <Plus className="h-4 w-4" />
-                Create New Profile
+                New Profile
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {profiles.length === 0 ? (
+            <DashboardFilters
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              countryFilter={countryFilter}
+              onCountryFilterChange={setCountryFilter}
+            />
+
+            {filteredProfiles.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground mb-4">No profiles yet</p>
-                <Button onClick={() => handleCreate()} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Your First Profile
-                </Button>
+                <p className="text-muted-foreground mb-4">
+                  {profilesMatrix.length === 0 ? 'No profiles yet' : 'No profiles match your filters'}
+                </p>
+                {profilesMatrix.length === 0 && (
+                  <Button onClick={handleCreate} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Your First Profile
+                  </Button>
+                )}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40%]">Profile</TableHead>
-                    <TableHead>
-                      <span className="flex items-center gap-1">
-                        <Globe className="h-4 w-4" />
-                        Country
-                      </span>
-                    </TableHead>
-                    <TableHead>
-                      <span className="flex items-center gap-1">
-                        <Languages className="h-4 w-4" />
-                        Language
-                      </span>
-                    </TableHead>
-                    <TableHead>
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="h-4 w-4" />
-                        Questions
-                      </span>
-                    </TableHead>
-                    <TableHead>
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-4 w-4" />
-                        Jobs
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profiles.map((item) => {
-                    const countryInfo = countries[item.country] || {
-                      label: item.country.toUpperCase(),
-                      flag: '🌍',
-                    };
-
-                    return (
-                      <TableRow
-                        key={item.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleRowClick(item)}
-                      >
-                        <TableCell className="font-medium">{item.profile}</TableCell>
-                        <TableCell>
-                          <span className="flex items-center gap-1">
-                            {countryInfo.flag} {countryInfo.label}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[250px]">ONET-SOC Profile</TableHead>
+                      {SUPPORTED_COUNTRIES.map((country) => (
+                        <TableHead key={country.code} className="text-center min-w-[120px]">
+                          <span className="flex items-center justify-center gap-1">
+                            {country.flag} {country.code.toUpperCase()}
                           </span>
-                        </TableCell>
-                        <TableCell>
-                          {languageLabels[item.language] || item.language.toUpperCase()}
-                        </TableCell>
-                        <TableCell>{item.questionsCount}</TableCell>
-                        <TableCell>{item.jobsCount}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReanalyse(item);
-                              }}
-                            >
-                              <RefreshCw className="h-4 w-4 mr-1" />
-                              Re-analyse
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={(e) => handleDelete(e, item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProfiles.map((profile) => (
+                      <TableRow key={profile.profileName}>
+                        <TableCell className="font-medium">{profile.profileName}</TableCell>
+                        {SUPPORTED_COUNTRIES.map((country) => (
+                          <TableCell key={country.code} className="p-2">
+                            <CountryStatusCell
+                              analysis={profile.countries[country.code]}
+                              onClick={() =>
+                                handleCellClick(
+                                  profile.profileName,
+                                  country.code,
+                                  profile.countries[country.code]
+                                )
+                              }
+                            />
+                          </TableCell>
+                        ))}
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
