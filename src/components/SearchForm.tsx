@@ -1,18 +1,12 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check } from 'lucide-react';
-import { SearchParams } from '@/types/job';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check } from "lucide-react";
+import { SearchParams } from "@/types/job";
 
 interface SearchFormProps {
   onSearch: (params: SearchParams) => void;
@@ -22,52 +16,52 @@ interface SearchFormProps {
 }
 
 const countries = [
-  { value: 'nl', label: 'Netherlands' },
-  { value: 'de', label: 'Germany' },
-  { value: 'be', label: 'Belgium' },
-  { value: 'gb', label: 'United Kingdom' },
-  { value: 'us', label: 'United States' },
-  { value: 'fr', label: 'France' },
+  { value: "nl", label: "Netherlands" },
+  { value: "de", label: "Germany" },
+  { value: "be", label: "Belgium" },
+  { value: "gb", label: "United Kingdom" },
+  { value: "us", label: "United States" },
+  { value: "fr", label: "France" },
 ];
 
 const languages = [
-  { value: 'en', label: 'English' },
-  { value: 'nl', label: 'Dutch' },
-  { value: 'de', label: 'German' },
-  { value: 'fr', label: 'French' },
+  { value: "en", label: "English" },
+  { value: "nl", label: "Dutch" },
+  { value: "de", label: "German" },
+  { value: "fr", label: "French" },
 ];
 
 const dateOptions = [
-  { value: 'all', label: 'All Time' },
-  { value: 'today', label: 'Today' },
-  { value: '3days', label: 'Last 3 Days' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
+  { value: "all", label: "All Time" },
+  { value: "today", label: "Today" },
+  { value: "3days", label: "Last 3 Days" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
 ];
 
 export function SearchForm({ onSearch, onTranslateProfile, loading, translating }: SearchFormProps) {
-  const [profile, setProfile] = useState('');
+  const [profile, setProfile] = useState("");
   const [jobTitles, setJobTitles] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [location, setLocation] = useState('');
-  const [country, setCountry] = useState('nl');
-  const [language, setLanguage] = useState('en');
-  const [datePosted, setDatePosted] = useState('all');
-  const [step, setStep] = useState<'profile' | 'review'>('profile');
+  const [editValue, setEditValue] = useState("");
+  const [location, setLocation] = useState("");
+  const [country, setCountry] = useState("nl");
+  const [language, setLanguage] = useState("en");
+  const [datePosted, setDatePosted] = useState("all");
+  const [step, setStep] = useState<"profile" | "review">("profile");
 
   const handleGenerateTitles = async () => {
     if (!profile.trim()) return;
-    
+
     const titles = await onTranslateProfile(profile, country, language);
     if (titles && titles.length > 0) {
       setJobTitles(titles);
-      setStep('review');
+      setStep("review");
     }
   };
 
   const handleRemoveTitle = (index: number) => {
-    setJobTitles(prev => prev.filter((_, i) => i !== index));
+    setJobTitles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleStartEdit = (index: number) => {
@@ -77,21 +71,21 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
 
   const handleSaveEdit = () => {
     if (editingIndex !== null && editValue.trim()) {
-      setJobTitles(prev => prev.map((title, i) => i === editingIndex ? editValue.trim() : title));
+      setJobTitles((prev) => prev.map((title, i) => (i === editingIndex ? editValue.trim() : title)));
     }
     setEditingIndex(null);
-    setEditValue('');
+    setEditValue("");
   };
 
   const handleCancelEdit = () => {
     setEditingIndex(null);
-    setEditValue('');
+    setEditValue("");
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (jobTitles.length === 0) return;
-    
+
     onSearch({
       jobTitles,
       location,
@@ -102,7 +96,7 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
   };
 
   const handleBack = () => {
-    setStep('profile');
+    setStep("profile");
   };
 
   return (
@@ -114,7 +108,7 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {step === 'profile' ? (
+        {step === "profile" ? (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="profile">ONET-SOC Profile</Label>
@@ -168,11 +162,7 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
               </div>
             </div>
 
-            <Button 
-              onClick={handleGenerateTitles} 
-              className="w-full" 
-              disabled={translating || !profile.trim()}
-            >
+            <Button onClick={handleGenerateTitles} className="w-full" disabled={translating || !profile.trim()}>
               {translating ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
@@ -181,7 +171,7 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Job Titles
+                  Get Job Titles
                 </>
               )}
             </Button>
@@ -209,28 +199,22 @@ export function SearchForm({ onSearch, onTranslateProfile, loading, translating 
                           className="h-8 w-48"
                           autoFocus
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleSaveEdit();
                             }
-                            if (e.key === 'Escape') {
+                            if (e.key === "Escape") {
                               handleCancelEdit();
                             }
                           }}
                         />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={handleSaveEdit}
-                        >
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveEdit}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={handleCancelEdit}
                         >
