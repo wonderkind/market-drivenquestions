@@ -266,9 +266,41 @@ Be specific with quotes - use actual text from the job descriptions. Include the
       throw new Error('Failed to parse AI analysis response');
     }
 
+    // Apply relevance threshold: filter out questions mentioned in less than 15% of jobs
+    const totalJobs = jobs.length;
+    const relevanceThreshold = Math.ceil(totalJobs * 0.15); // 15% threshold
+    
+    console.log(`Applying relevance threshold: ${relevanceThreshold} mentions required (15% of ${totalJobs} jobs)`);
+    
+    const filterQuestions = (questions: any[]) => {
+      if (!Array.isArray(questions)) return [];
+      return questions.filter(q => {
+        const mentions = typeof q.mentions === 'number' ? q.mentions : 0;
+        return mentions >= relevanceThreshold;
+      });
+    };
+    
+    // Filter each category
+    if (analysis.license?.questions) {
+      const before = analysis.license.questions.length;
+      analysis.license.questions = filterQuestions(analysis.license.questions);
+      console.log(`License: ${before} -> ${analysis.license.questions.length} questions after threshold`);
+    }
+    if (analysis.qualification?.questions) {
+      const before = analysis.qualification.questions.length;
+      analysis.qualification.questions = filterQuestions(analysis.qualification.questions);
+      console.log(`Qualification: ${before} -> ${analysis.qualification.questions.length} questions after threshold`);
+    }
+    if (analysis.certification?.questions) {
+      const before = analysis.certification.questions.length;
+      analysis.certification.questions = filterQuestions(analysis.certification.questions);
+      console.log(`Certification: ${before} -> ${analysis.certification.questions.length} questions after threshold`);
+    }
+
     return new Response(JSON.stringify({ 
       analysis,
-      jobCount: jobs.length 
+      jobCount: jobs.length,
+      relevanceThreshold
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
