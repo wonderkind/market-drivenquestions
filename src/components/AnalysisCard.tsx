@@ -50,8 +50,8 @@ export function AnalysisCard({
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="divide-y divide-border">
-        {questions.map((q, index) => <div key={index} className="py-4 first:pt-4 last:pb-4 border-0 border-dashed my-[7px]">
+      <CardContent className="p-4 space-y-4">
+        {questions.map((q, index) => <div key={index} className="bg-muted/50 rounded-lg p-4 border border-border/50">
             <div className="flex items-start justify-between gap-4 mb-3">
               <h4 className="font-medium text-foreground">{q.question}</h4>
               <Badge variant="outline" className={cn('shrink-0', getCertaintyColor(q.certainty))}>
