@@ -12,7 +12,7 @@ export function Header() {
     await signOut();
     navigate('/');
   };
-  return <header className="border-b border-border bg-brand">
+  return <header className="border-b border-border bg-card">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           
