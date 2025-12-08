@@ -342,15 +342,15 @@ export default function CreateProfile() {
                 <span className="font-medium text-foreground">Pre-filled from Dashboard</span>
               </div>
               <div className="flex flex-wrap gap-3">
-                {state?.profile && <Badge variant="secondary" className="gap-1">
+                {state?.profile && <Badge variant="secondary" className="gap-1 text-primary-foreground">
                     <Briefcase className="h-3 w-3" />
                     {state.profile}
                   </Badge>}
-                {state?.country && <Badge variant="secondary" className="gap-1">
+                {state?.country && <Badge variant="secondary" className="gap-1 text-primary-foreground">
                     <Globe className="h-3 w-3" />
                     {getCountryInfo(state.country).flag} {getCountryInfo(state.country).label}
                   </Badge>}
-                {state?.language && <Badge variant="secondary" className="gap-1">
+                {state?.language && <Badge variant="secondary" className="gap-1 text-primary-foreground">
                     <Languages className="h-3 w-3" />
                     {getLanguageLabel(state.language)}
                   </Badge>}
@@ -380,8 +380,7 @@ export default function CreateProfile() {
         {/* Step 1: Profile Input */}
         {step === 'profile' && <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2">Search relevant jobs in your ONET-SOC Profile<Sparkles className="h-5 w-5 text-primary" />
                 Enter ONET-SOC Profile
               </CardTitle>
               <CardDescription>
@@ -425,8 +424,7 @@ export default function CreateProfile() {
                 </div>
               </div>
 
-              <Button onClick={handleGenerateTitles} className="w-full" disabled={translating || !profile.trim()}>
-                {translating ? <>
+              <Button onClick={handleGenerateTitles} className="w-full" disabled={translating || !profile.trim()}>Get{translating ? <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating Job Titles...
                   </> : <>
