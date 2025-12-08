@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SavedQuestionsData } from '@/types/job';
-import { Plus, FolderOpen, Globe, Languages, MessageSquare, Briefcase, Trash2 } from 'lucide-react';
+import { Plus, FolderOpen, Globe, Languages, MessageSquare, Briefcase, Trash2, RefreshCw } from 'lucide-react';
 
 interface ProfileCatalogItem {
   id: string;
@@ -114,18 +114,19 @@ export default function Dashboard() {
     navigate(`/profile/${item.id}`);
   };
 
-  const handleCreate = (item?: ProfileCatalogItem) => {
-    if (item) {
-      navigate('/create-profile', {
-        state: {
-          profile: item.profile,
-          country: item.country,
-          language: item.language,
-        },
-      });
-    } else {
-      navigate('/create-profile');
-    }
+  const handleCreate = () => {
+    navigate('/create-profile');
+  };
+
+  const handleReanalyse = (item: ProfileCatalogItem) => {
+    navigate('/create-profile', {
+      state: {
+        profile: item.profile,
+        country: item.country,
+        language: item.language,
+        profileId: item.id,
+      },
+    });
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -257,11 +258,11 @@ export default function Dashboard() {
                               variant="outline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCreate(item);
+                                handleReanalyse(item);
                               }}
                             >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Create
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Re-analyse
                             </Button>
                             <Button
                               size="icon"
