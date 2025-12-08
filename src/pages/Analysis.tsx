@@ -511,6 +511,7 @@ export default function Analysis() {
                         profile: jobTitle,
                         country,
                         language,
+                        jobsScrapedCount: allJobs.length,
                         savedAt: new Date().toISOString(),
                       })),
                     });

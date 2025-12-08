@@ -118,5 +118,6 @@ export interface SavedQuestionsData {
   profile: string;
   country: string;
   language: string;
+  jobsScrapedCount?: number;
   savedAt: string;
 }

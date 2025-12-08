@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Results from "./pages/Results";
 import Analysis from "./pages/Analysis";
 import Dashboard from "./pages/Dashboard";
+import CreateProfile from "./pages/CreateProfile";
+import ProfileDetail from "./pages/ProfileDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/results" element={<Results />} />
             <Route path="/analysis" element={<Analysis />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/create-profile" element={<CreateProfile />} />
+            <Route path="/profile/:id" element={<ProfileDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
