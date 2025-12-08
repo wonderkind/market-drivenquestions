@@ -96,3 +96,19 @@ export interface AnalysisResult {
   certification: AnalysisCategory;
   summary: string;
 }
+
+export interface AnalysisMetrics {
+  totalJobsAnalyzed: number;
+  basicJobsCount: number;
+  enhancedJobsCount: number;
+  questionsFound: {
+    license: number;
+    qualification: number;
+    certification: number;
+  };
+  previousQuestionsFound?: {
+    license: number;
+    qualification: number;
+    certification: number;
+  };
+}
