@@ -141,7 +141,7 @@ Examples of the Gen-Z friendly English tone:
 ### 4. OPERATIONELE FIT (Operational Fit)
 - **Legal Status**: General suitability criteria related to the practical execution of the job. NOT legally binding.
 - **Issuing Authority**: Employer requirements based on the practical demands of the work environment.
-- **Purpose**: Determine if the candidate can meet the physical, environmental, and schedule demands of the role.
+- **Purpose**: Determine if the candidate can meet the physical, environmental, and schedule demands of the role. **Dit is de vangnet-categorie voor alle praktische vereisten die niet vallen onder wettelijke Licenties, formele Certificeringen of specifieke Ervaring/Opleiding (Kwalificatie).**
 - **Examples**:
   - Bereidheid om in ploegendiensten, avonduren, of weekenden te werken (werkrooster/beschikbaarheid)
   - Fysieke eisen, zoals het kunnen tillen van zware items (fysieke conditie)
@@ -230,7 +230,7 @@ Return your analysis as a JSON object with this exact structure:
 - "experienceConfig" field is ONLY required when answerType is "experience"
 - For "yes_no" and "text" types, do NOT include options or experienceConfig
 
-Be specific with quotes - use actual text from the job descriptions. Include the employer name in sources.`;
+Be specific with quotes - use actual text from the job descriptions. **Als een vereiste duidelijk is maar niet direct gequote kan worden, gebruik dan een samenvatting van de vereiste uit de beschrijving.** Include the employer name in sources.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
