@@ -282,43 +282,52 @@ Be specific with quotes - use actual text from the job descriptions. **Als een v
     } // Apply relevance threshold: filter out questions mentioned in less than 15% of jobs
 
     const totalJobs = jobs.length;
-    const relevanceThreshold = Math.ceil(totalJobs * 0.15); // 15% threshold
-    console.log(`Applying relevance threshold: ${relevanceThreshold} mentions required (15% of ${totalJobs} jobs)`);
-    const filterQuestions = (questions: any[]) => {
+    
+    // Category-specific thresholds
+    const thresholds = {
+      license: Math.ceil(totalJobs * 0.10),         // 10%
+      certification: Math.ceil(totalJobs * 0.10),   // 10%
+      qualification: Math.ceil(totalJobs * 0.05),   // 5% - more varied phrasing
+      operationele_fit: Math.ceil(totalJobs * 0.10) // 10%
+    };
+
+    console.log(`Applying relevance thresholds: License=${thresholds.license}, Cert=${thresholds.certification}, Qual=${thresholds.qualification}, OpFit=${thresholds.operationele_fit} (of ${totalJobs} jobs)`);
+    
+    const filterQuestions = (questions: any[], threshold: number) => {
       if (!Array.isArray(questions)) return [];
       return questions.filter((q) => {
         const mentions = typeof q.mentions === "number" ? q.mentions : 0;
-        return mentions >= relevanceThreshold;
+        return mentions >= threshold;
       });
-    }; // Filter each category
+    };
+    
+    // Filter each category with its specific threshold
     if (analysis.license?.questions) {
       const before = analysis.license.questions.length;
-      analysis.license.questions = filterQuestions(analysis.license.questions);
-      console.log(`License: ${before} -> ${analysis.license.questions.length} questions after threshold`);
+      analysis.license.questions = filterQuestions(analysis.license.questions, thresholds.license);
+      console.log(`License: ${before} -> ${analysis.license.questions.length} questions (threshold: ${thresholds.license})`);
     }
     if (analysis.qualification?.questions) {
       const before = analysis.qualification.questions.length;
-      analysis.qualification.questions = filterQuestions(analysis.qualification.questions);
-      console.log(`Qualification: ${before} -> ${analysis.qualification.questions.length} questions after threshold`);
+      analysis.qualification.questions = filterQuestions(analysis.qualification.questions, thresholds.qualification);
+      console.log(`Qualification: ${before} -> ${analysis.qualification.questions.length} questions (threshold: ${thresholds.qualification})`);
     }
     if (analysis.certification?.questions) {
       const before = analysis.certification.questions.length;
-      analysis.certification.questions = filterQuestions(analysis.certification.questions);
-      console.log(`Certification: ${before} -> ${analysis.certification.questions.length} questions after threshold`);
-    } // NEW: Filter Operational Fit category
+      analysis.certification.questions = filterQuestions(analysis.certification.questions, thresholds.certification);
+      console.log(`Certification: ${before} -> ${analysis.certification.questions.length} questions (threshold: ${thresholds.certification})`);
+    }
     if (analysis.operationele_fit?.questions) {
       const before = analysis.operationele_fit.questions.length;
-      analysis.operationele_fit.questions = filterQuestions(analysis.operationele_fit.questions);
-      console.log(
-        `Operationele Fit: ${before} -> ${analysis.operationele_fit.questions.length} questions after threshold`,
-      );
+      analysis.operationele_fit.questions = filterQuestions(analysis.operationele_fit.questions, thresholds.operationele_fit);
+      console.log(`Operationele Fit: ${before} -> ${analysis.operationele_fit.questions.length} questions (threshold: ${thresholds.operationele_fit})`);
     }
 
     return new Response(
       JSON.stringify({
         analysis,
         jobCount: jobs.length,
-        relevanceThreshold,
+        relevanceThresholds: thresholds,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
