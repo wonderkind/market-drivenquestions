@@ -12,19 +12,21 @@ serve(async (req) => {
   }
 
   try {
-    const { query, location, country, language, date_posted, page = 1 } = await req.json();
+    const { query, location, country, language, date_posted, page = 1, num_pages = 5 } = await req.json();
     
     const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY');
     if (!RAPIDAPI_KEY) {
       throw new Error('RAPIDAPI_KEY is not configured');
     }
 
-    console.log('Searching jobs with params:', { query, location, country, language, date_posted, page });
+    // Clamp num_pages between 1 and 10
+    const clampedNumPages = Math.max(1, Math.min(10, num_pages));
+    console.log('Searching jobs with params:', { query, location, country, language, date_posted, page, num_pages: clampedNumPages });
 
     const params = new URLSearchParams({
       query: query || '',
       page: String(page),
-      num_pages: '5',
+      num_pages: String(clampedNumPages),
       date_posted: date_posted || 'all',
       country: country || 'nl',
       language: language || 'en',

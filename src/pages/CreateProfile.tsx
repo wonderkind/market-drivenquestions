@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench } from 'lucide-react';
 const countries = [{
   value: 'nl',
   label: 'Netherlands',
@@ -104,6 +104,7 @@ export default function CreateProfile() {
   const [country, setCountry] = useState(state?.country || 'nl');
   const [language, setLanguage] = useState(state?.language || 'en');
   const [datePosted, setDatePosted] = useState('all');
+  const [numPages, setNumPages] = useState(5);
   const [step, setStep] = useState<'profile' | 'review' | 'results' | 'analysis'>('profile');
 
   // Results state
@@ -167,7 +168,8 @@ export default function CreateProfile() {
       location: locationValue,
       country,
       language,
-      date_posted: datePosted
+      date_posted: datePosted,
+      num_pages: numPages
     });
     setJobs(searchResults);
     setStep('results');
@@ -249,7 +251,7 @@ export default function CreateProfile() {
       setAnalyzing(false);
     }
   };
-  const handleAnswerChange = (category: 'license' | 'qualification' | 'certification', index: number, answer: string | string[] | number | boolean) => {
+  const handleAnswerChange = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number, answer: string | string[] | number | boolean) => {
     if (!analysis) return;
     const updatedAnalysis = {
       ...analysis
@@ -546,6 +548,22 @@ export default function CreateProfile() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label>Jobs per Title</Label>
+                      <Select value={String(numPages)} onValueChange={(v) => setNumPages(Number(v))}>
+                        <SelectTrigger>
+                          <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">~20 jobs</SelectItem>
+                          <SelectItem value="5">~50 jobs</SelectItem>
+                          <SelectItem value="7">~70 jobs</SelectItem>
+                          <SelectItem value="10">~100 jobs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="flex gap-4">
@@ -716,6 +734,8 @@ export default function CreateProfile() {
                 <AnalysisCard title="Qualification Questions" icon={<GraduationCap className="h-5 w-5 text-green-500" />} questions={analysis.qualification?.questions || []} color="border-l-4 border-l-green-500" onAnswerChange={(idx, val) => handleAnswerChange('qualification', idx, val)} />
 
                 <AnalysisCard title="Certification Questions" icon={<Award className="h-5 w-5 text-purple-500" />} questions={analysis.certification?.questions || []} color="border-l-4 border-l-purple-500" onAnswerChange={(idx, val) => handleAnswerChange('certification', idx, val)} />
+
+                <AnalysisCard title="Operationele Fit Questions" icon={<Wrench className="h-5 w-5 text-orange-500" />} questions={analysis.operationele_fit?.questions || []} color="border-l-4 border-l-orange-500" onAnswerChange={(idx, val) => handleAnswerChange('operationele_fit', idx, val)} />
               </> : null}
           </div>}
       </main>
