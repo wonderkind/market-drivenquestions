@@ -62,6 +62,7 @@ export function useJobSearch() {
             country: params.country,
             language: params.language,
             date_posted: params.date_posted,
+            num_pages: params.num_pages,
           },
         })
       );

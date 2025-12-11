@@ -70,6 +70,7 @@ export interface SearchParams {
   language: string;
   date_posted: string;
   page?: number;
+  num_pages?: number;
 }
 
 export interface SearchResponse {
@@ -112,6 +113,7 @@ export interface AnalysisResult {
   license: AnalysisCategory;
   qualification: AnalysisCategory;
   certification: AnalysisCategory;
+  operationele_fit: AnalysisCategory;
   summary: string;
 }
 

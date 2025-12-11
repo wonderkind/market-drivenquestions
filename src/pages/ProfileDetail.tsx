@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig } from '@/types/job';
 import { QuestionAnswer } from '@/components/QuestionAnswer';
-import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database } from 'lucide-react';
+import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench } from 'lucide-react';
 interface AnalysisQuestionLocal {
   question: string;
   mentions: number;
@@ -80,7 +80,7 @@ export default function ProfileDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{
-    category: 'license' | 'qualification' | 'certification';
+    category: 'license' | 'qualification' | 'certification' | 'operationele_fit';
     index: number;
   } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -123,7 +123,7 @@ export default function ProfileDetail() {
       setLoading(false);
     }
   };
-  const handleStartEdit = (category: 'license' | 'qualification' | 'certification', index: number, currentValue: string) => {
+  const handleStartEdit = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number, currentValue: string) => {
     setEditingQuestion({
       category,
       index
@@ -151,7 +151,7 @@ export default function ProfileDetail() {
     setEditingQuestion(null);
     setEditValue('');
   };
-  const handleDeleteQuestion = (category: 'license' | 'qualification' | 'certification', index: number) => {
+  const handleDeleteQuestion = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number) => {
     if (!profile) return;
     const updatedProfile = {
       ...profile
@@ -162,7 +162,7 @@ export default function ProfileDetail() {
     }
     setProfile(updatedProfile);
   };
-  const handleAnswerChange = (category: 'license' | 'qualification' | 'certification', index: number, answer: string | string[] | number | boolean) => {
+  const handleAnswerChange = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number, answer: string | string[] | number | boolean) => {
     if (!profile) return;
     const updatedProfile = {
       ...profile
@@ -198,7 +198,7 @@ export default function ProfileDetail() {
       setSaving(false);
     }
   };
-  const renderQuestionList = (category: 'license' | 'qualification' | 'certification', title: string, icon: React.ReactNode, borderColor: string) => {
+  const renderQuestionList = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', title: string, icon: React.ReactNode, borderColor: string) => {
     const questions = profile?.analysis_data.questions[category]?.questions || [];
     return <Card className={borderColor}>
         <CardHeader>
@@ -331,6 +331,8 @@ export default function ProfileDetail() {
           {renderQuestionList('qualification', 'Qualification Questions', <GraduationCap className="h-5 w-5 text-green-500" />, 'border-l-4 border-l-green-500')}
 
           {renderQuestionList('certification', 'Certification Questions', <Award className="h-5 w-5 text-purple-500" />, 'border-l-4 border-l-purple-500')}
+
+          {renderQuestionList('operationele_fit', 'Operationele Fit Questions', <Wrench className="h-5 w-5 text-orange-500" />, 'border-l-4 border-l-orange-500')}
         </div>
       </main>
     </div>;
