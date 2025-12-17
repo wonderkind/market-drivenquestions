@@ -19,8 +19,8 @@ serve(async (req) => {
       throw new Error('RAPIDAPI_KEY is not configured');
     }
 
-    // Clamp num_pages between 1 and 10
-    const clampedNumPages = Math.max(1, Math.min(10, num_pages));
+    // Clamp num_pages between 1 and 100 (each page ≈ 10 jobs, max 1000 jobs)
+    const clampedNumPages = Math.max(1, Math.min(100, num_pages));
     console.log('Searching jobs with params:', { query, location, country, language, date_posted, page, num_pages: clampedNumPages });
 
     const params = new URLSearchParams({

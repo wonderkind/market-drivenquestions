@@ -559,8 +559,10 @@ export default function CreateProfile() {
                         <SelectContent>
                           <SelectItem value="2">~20 jobs</SelectItem>
                           <SelectItem value="5">~50 jobs</SelectItem>
-                          <SelectItem value="7">~70 jobs</SelectItem>
                           <SelectItem value="10">~100 jobs</SelectItem>
+                          <SelectItem value="25">~250 jobs</SelectItem>
+                          <SelectItem value="50">~500 jobs</SelectItem>
+                          <SelectItem value="100">~1000 jobs</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

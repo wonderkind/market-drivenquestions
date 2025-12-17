@@ -39,9 +39,9 @@ serve(async (req) => {
     const countryName = countryNames[country] || country;
     const languageName = languageNames[language] || language;
 
-    const systemPrompt = `You are a job market expert. Given an ONET-SOC occupational profile, return exactly 3 commonly used job titles for this occupation in ${countryName}. 
+    const systemPrompt = `You are a job market expert. Given an ONET-SOC occupational profile, return ALL commonly used job titles for this occupation in ${countryName} that fully represent the profile.
 The job titles should be in ${languageName} language and reflect how employers in ${countryName} typically advertise these positions.
-Return practical, searchable job titles that job seekers would find on job boards.`;
+Return as many practical, searchable job titles as needed to comprehensively cover how this occupation is advertised on job boards. Include variations, specializations, and alternative terms.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -53,7 +53,7 @@ Return practical, searchable job titles that job seekers would find on job board
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `ONET-SOC Profile: "${profile}"\n\nProvide 3 job titles.` }
+          { role: 'user', content: `ONET-SOC Profile: "${profile}"\n\nProvide all relevant job titles that represent this occupation comprehensively.` }
         ],
         tools: [
           {
@@ -67,9 +67,9 @@ Return practical, searchable job titles that job seekers would find on job board
                   jobTitles: {
                     type: 'array',
                     items: { type: 'string' },
-                    minItems: 3,
-                    maxItems: 3,
-                    description: 'Array of exactly 3 job titles'
+                    minItems: 1,
+                    maxItems: 15,
+                    description: 'Array of all relevant job titles that represent the occupation'
                   }
                 },
                 required: ['jobTitles'],
