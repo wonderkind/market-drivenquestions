@@ -76,30 +76,42 @@ interface LocationState {
   profileId?: string;
 }
 
-// Helper component for displaying potential questions
-function PotentialQuestionItem({ question, onAdd }: { question: AnalysisQuestion; onAdd: () => void }) {
-  const getCertaintyColor = (certainty: string) => {
-    switch (certainty) {
-      case 'high': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'medium': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'low': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
+// Helper component for displaying potential questions with threshold context
+interface PotentialQuestionItemProps {
+  question: AnalysisQuestion;
+  onAdd: () => void;
+  threshold: number;
+  totalJobs: number;
+}
+
+function PotentialQuestionItem({ question, onAdd, threshold, totalJobs }: PotentialQuestionItemProps) {
+  const mentions = question.mentions || 0;
+  const percentage = totalJobs > 0 ? ((mentions / totalJobs) * 100).toFixed(1) : '0';
+  const thresholdPercentage = totalJobs > 0 ? ((threshold / totalJobs) * 100).toFixed(0) : '0';
+  const shortfall = threshold - mentions;
 
   return (
     <div className="p-4 rounded-lg border border-border bg-background">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-foreground">{question.question}</p>
+          
+          {/* Threshold context badges */}
           <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
             <Badge variant="secondary" className="gap-1">
-              {question.mentions} mentions
+              📊 {mentions} of {totalJobs} jobs ({percentage}%)
             </Badge>
-            <Badge className={getCertaintyColor(question.certainty)}>
-              {question.certainty} certainty
+            <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+              🎯 Threshold: {threshold} ({thresholdPercentage}%)
             </Badge>
           </div>
+          
+          {/* Explanation why it didn't meet threshold */}
+          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2 italic">
+            ⚠️ This question needed {shortfall} more mention{shortfall !== 1 ? 's' : ''} to be automatically included.
+            Add manually if you believe it's relevant for this profile.
+          </p>
+          
           {question.quotes && question.quotes.length > 0 && (
             <div className="mt-2 text-xs text-muted-foreground">
               <span className="font-medium">Quote:</span> "{question.quotes[0].slice(0, 100)}..."
@@ -156,6 +168,12 @@ export default function CreateProfile() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [potentialQuestions, setPotentialQuestions] = useState<PotentialQuestions | null>(null);
+  const [relevanceThresholds, setRelevanceThresholds] = useState<{
+    license: number;
+    certification: number;
+    qualification: number;
+    operationele_fit: number;
+  } | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
@@ -283,6 +301,7 @@ export default function CreateProfile() {
       if (data.error) throw new Error(data.error);
       setAnalysis(data.analysis);
       setPotentialQuestions(data.potentialQuestions || null);
+      setRelevanceThresholds(data.relevanceThresholds || null);
       toast({
         title: 'Analysis Complete',
         description: `Analyzed ${data.jobCount} job listings${enhanced ? ' with enhanced data' : ''}`
@@ -832,8 +851,8 @@ export default function CreateProfile() {
                         Potential Relevant Questions
                       </CardTitle>
                       <CardDescription>
-                        These questions were mentioned in fewer jobs but may still be relevant for this profile.
-                        Click "Add" to include them in your profile.
+                        These questions were mentioned in job descriptions but didn't reach the minimum threshold
+                        to be automatically included. Review them and add any that you believe are relevant based on your expertise.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -849,6 +868,8 @@ export default function CreateProfile() {
                               key={`license-${idx}`}
                               question={q}
                               onAdd={() => handleAddPotentialQuestion('license', q)}
+                              threshold={relevanceThresholds?.license || 0}
+                              totalJobs={jobs.length}
                             />
                           ))}
                         </div>
@@ -866,6 +887,8 @@ export default function CreateProfile() {
                               key={`qual-${idx}`}
                               question={q}
                               onAdd={() => handleAddPotentialQuestion('qualification', q)}
+                              threshold={relevanceThresholds?.qualification || 0}
+                              totalJobs={jobs.length}
                             />
                           ))}
                         </div>
@@ -883,6 +906,8 @@ export default function CreateProfile() {
                               key={`cert-${idx}`}
                               question={q}
                               onAdd={() => handleAddPotentialQuestion('certification', q)}
+                              threshold={relevanceThresholds?.certification || 0}
+                              totalJobs={jobs.length}
                             />
                           ))}
                         </div>
@@ -900,6 +925,8 @@ export default function CreateProfile() {
                               key={`opfit-${idx}`}
                               question={q}
                               onAdd={() => handleAddPotentialQuestion('operationele_fit', q)}
+                              threshold={relevanceThresholds?.operationele_fit || 0}
+                              totalJobs={jobs.length}
                             />
                           ))}
                         </div>
