@@ -13,8 +13,8 @@ import { useJobSearch } from '@/hooks/useJobSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Job, AnalysisResult } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench } from 'lucide-react';
+import { Job, AnalysisResult, PotentialQuestions, AnalysisQuestion } from '@/types/job';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle, Plus } from 'lucide-react';
 const countries = [{
   value: 'nl',
   label: 'Netherlands',
@@ -75,6 +75,51 @@ interface LocationState {
   language?: string;
   profileId?: string;
 }
+
+// Helper component for displaying potential questions
+function PotentialQuestionItem({ question, onAdd }: { question: AnalysisQuestion; onAdd: () => void }) {
+  const getCertaintyColor = (certainty: string) => {
+    switch (certainty) {
+      case 'high': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'medium': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'low': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  return (
+    <div className="p-4 rounded-lg border border-border bg-background">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-foreground">{question.question}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+            <Badge variant="secondary" className="gap-1">
+              {question.mentions} mentions
+            </Badge>
+            <Badge className={getCertaintyColor(question.certainty)}>
+              {question.certainty} certainty
+            </Badge>
+          </div>
+          {question.quotes && question.quotes.length > 0 && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              <span className="font-medium">Quote:</span> "{question.quotes[0].slice(0, 100)}..."
+            </div>
+          )}
+          {question.sources && question.sources.length > 0 && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              <span className="font-medium">Sources:</span> {question.sources.slice(0, 3).join(', ')}
+            </div>
+          )}
+        </div>
+        <Button size="sm" variant="outline" onClick={onAdd} className="gap-1 flex-shrink-0">
+          <Plus className="h-3 w-3" />
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function CreateProfile() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -110,6 +155,7 @@ export default function CreateProfile() {
   // Results state
   const [jobs, setJobs] = useState<Job[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [potentialQuestions, setPotentialQuestions] = useState<PotentialQuestions | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
@@ -236,6 +282,7 @@ export default function CreateProfile() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       setAnalysis(data.analysis);
+      setPotentialQuestions(data.potentialQuestions || null);
       toast({
         title: 'Analysis Complete',
         description: `Analyzed ${data.jobCount} job listings${enhanced ? ' with enhanced data' : ''}`
@@ -261,6 +308,38 @@ export default function CreateProfile() {
       questions[index].userAnswer = answer;
     }
     setAnalysis(updatedAnalysis);
+  };
+  const handleAddPotentialQuestion = (
+    category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
+    question: AnalysisQuestion
+  ) => {
+    if (!analysis || !potentialQuestions) return;
+    
+    // Add to analysis
+    setAnalysis(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          questions: [...(prev[category]?.questions || []), question]
+        }
+      };
+    });
+    
+    // Remove from potential questions
+    setPotentialQuestions(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [category]: prev[category].filter(q => q.question !== question.question)
+      };
+    });
+    
+    toast({
+      title: 'Question added',
+      description: `Added "${question.question.slice(0, 40)}..." to ${category}`
+    });
   };
   const handleSave = async () => {
     if (!analysis || !user) {
@@ -738,6 +817,96 @@ export default function CreateProfile() {
                 <AnalysisCard title="Certification Questions" icon={<Award className="h-5 w-5 text-purple-500" />} questions={analysis.certification?.questions || []} color="border-l-4 border-l-purple-500" onAnswerChange={(idx, val) => handleAnswerChange('certification', idx, val)} />
 
                 <AnalysisCard title="Operationele Fit Questions" icon={<Wrench className="h-5 w-5 text-orange-500" />} questions={analysis.operationele_fit?.questions || []} color="border-l-4 border-l-orange-500" onAnswerChange={(idx, val) => handleAnswerChange('operationele_fit', idx, val)} />
+
+                {/* Potential Questions Section */}
+                {potentialQuestions && (
+                  potentialQuestions.license?.length > 0 ||
+                  potentialQuestions.qualification?.length > 0 ||
+                  potentialQuestions.certification?.length > 0 ||
+                  potentialQuestions.operationele_fit?.length > 0
+                ) && (
+                  <Card className="border-dashed border-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="h-5 w-5" />
+                        Potential Relevant Questions
+                      </CardTitle>
+                      <CardDescription>
+                        These questions were mentioned in fewer jobs but may still be relevant for this profile.
+                        Click "Add" to include them in your profile.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* License potential questions */}
+                      {potentialQuestions.license?.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+                            <Car className="h-4 w-4" />
+                            License
+                          </div>
+                          {potentialQuestions.license.map((q, idx) => (
+                            <PotentialQuestionItem
+                              key={`license-${idx}`}
+                              question={q}
+                              onAdd={() => handleAddPotentialQuestion('license', q)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Qualification potential questions */}
+                      {potentialQuestions.qualification?.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                            <GraduationCap className="h-4 w-4" />
+                            Qualification
+                          </div>
+                          {potentialQuestions.qualification.map((q, idx) => (
+                            <PotentialQuestionItem
+                              key={`qual-${idx}`}
+                              question={q}
+                              onAdd={() => handleAddPotentialQuestion('qualification', q)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Certification potential questions */}
+                      {potentialQuestions.certification?.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-purple-600">
+                            <Award className="h-4 w-4" />
+                            Certification
+                          </div>
+                          {potentialQuestions.certification.map((q, idx) => (
+                            <PotentialQuestionItem
+                              key={`cert-${idx}`}
+                              question={q}
+                              onAdd={() => handleAddPotentialQuestion('certification', q)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Operationele Fit potential questions */}
+                      {potentialQuestions.operationele_fit?.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-orange-600">
+                            <Wrench className="h-4 w-4" />
+                            Operationele Fit
+                          </div>
+                          {potentialQuestions.operationele_fit.map((q, idx) => (
+                            <PotentialQuestionItem
+                              key={`opfit-${idx}`}
+                              question={q}
+                              onAdd={() => handleAddPotentialQuestion('operationele_fit', q)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </> : null}
           </div>}
       </main>
