@@ -41,6 +41,9 @@ export function useJobSearch() {
     }
   };
 
+  // Helper to delay between API calls to avoid rate limiting
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const searchJobs = async (params: SearchParams) => {
     setLoading(true);
     setSearchParams(params);
@@ -53,38 +56,48 @@ export function useJobSearch() {
         throw new Error('No job titles provided for search');
       }
 
-      // Make parallel API calls for each job title
-      const searchPromises = titlesToSearch.map(title =>
-        supabase.functions.invoke('search-jobs', {
-          body: { 
-            query: title, 
-            location: params.location,
-            country: params.country,
-            language: params.language,
-            date_posted: params.date_posted,
-            num_pages: params.num_pages,
-          },
-        })
-      );
-
-      const results = await Promise.all(searchPromises);
-
-      // Combine and deduplicate results by job_id
+      // Sequential API calls with delay to avoid rate limiting
       const allJobs: Job[] = [];
       const seenJobIds = new Set<string>();
 
-      for (const result of results) {
-        if (result.error) {
-          console.error('Search error for one title:', result.error);
-          continue;
+      for (let i = 0; i < titlesToSearch.length; i++) {
+        const title = titlesToSearch[i];
+        
+        // Add delay between requests (skip first one)
+        if (i > 0) {
+          await delay(500);
         }
-        if (result.data?.data) {
-          for (const job of result.data.data) {
-            if (!seenJobIds.has(job.job_id)) {
-              seenJobIds.add(job.job_id);
-              allJobs.push(job);
+
+        try {
+          const { data, error } = await supabase.functions.invoke('search-jobs', {
+            body: { 
+              query: title, 
+              location: params.location,
+              country: params.country,
+              language: params.language,
+              date_posted: params.date_posted,
+              num_pages: params.num_pages,
+            },
+          });
+
+          if (error) {
+            console.error(`Search error for "${title}":`, error);
+            continue;
+          }
+
+          if (data?.data) {
+            for (const job of data.data) {
+              if (!seenJobIds.has(job.job_id)) {
+                seenJobIds.add(job.job_id);
+                allJobs.push(job);
+              }
             }
           }
+          
+          console.log(`Searched "${title}": found ${data?.data?.length || 0} jobs, total unique: ${allJobs.length}`);
+        } catch (titleError) {
+          console.error(`Error searching "${title}":`, titleError);
+          // Continue with next title even if one fails
         }
       }
 
