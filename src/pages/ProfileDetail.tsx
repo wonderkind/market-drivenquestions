@@ -3,13 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig } from '@/types/job';
+import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig, PotentialQuestions } from '@/types/job';
 import { QuestionAnswer } from '@/components/QuestionAnswer';
-import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench } from 'lucide-react';
+import { PotentialQuestionItem } from '@/components/PotentialQuestionItem';
+import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench, AlertTriangle, Minus } from 'lucide-react';
+
 interface AnalysisQuestionLocal {
   question: string;
   mentions: number;
@@ -22,61 +25,44 @@ interface AnalysisQuestionLocal {
   experienceConfig?: ExperienceConfig;
   userAnswer?: string | string[] | number | boolean;
 }
+
 interface ProfileData {
   id: string;
   analysis_data: SavedQuestionsData;
   created_at: string;
 }
-const countries: Record<string, {
-  label: string;
-  flag: string;
-}> = {
-  nl: {
-    label: 'Netherlands',
-    flag: '🇳🇱'
-  },
-  de: {
-    label: 'Germany',
-    flag: '🇩🇪'
-  },
-  be: {
-    label: 'Belgium',
-    flag: '🇧🇪'
-  },
-  gb: {
-    label: 'United Kingdom',
-    flag: '🇬🇧'
-  },
-  us: {
-    label: 'United States',
-    flag: '🇺🇸'
-  },
-  fr: {
-    label: 'France',
-    flag: '🇫🇷'
-  }
+
+const countries: Record<string, { label: string; flag: string }> = {
+  nl: { label: 'Netherlands', flag: '🇳🇱' },
+  de: { label: 'Germany', flag: '🇩🇪' },
+  be: { label: 'Belgium', flag: '🇧🇪' },
+  gb: { label: 'United Kingdom', flag: '🇬🇧' },
+  us: { label: 'United States', flag: '🇺🇸' },
+  fr: { label: 'France', flag: '🇫🇷' }
 };
+
 const languageLabels: Record<string, string> = {
   en: 'English',
   nl: 'Dutch',
   de: 'German',
   fr: 'French'
 };
+
 export default function ProfileDetail() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    user,
-    loading: authLoading
-  } = useAuth();
+  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [potentialQuestions, setPotentialQuestions] = useState<PotentialQuestions | null>(null);
+  const [relevanceThresholds, setRelevanceThresholds] = useState<{
+    license: number;
+    certification: number;
+    qualification: number;
+    operationele_fit: number;
+  } | null>(null);
+  const [totalJobsAnalyzed, setTotalJobsAnalyzed] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{
@@ -84,33 +70,43 @@ export default function ProfileDetail() {
     index: number;
   } | null>(null);
   const [editValue, setEditValue] = useState('');
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
   useEffect(() => {
     if (user && id) {
       fetchProfile();
     }
   }, [user, id]);
+
   const fetchProfile = async () => {
     if (!user || !id) return;
     setLoading(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('analysis_results').select('*').eq('id', id).eq('user_id', user.id).single();
+      const { data, error } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+      
       if (error) throw error;
 
-      // Type assertion for the JSON data
       const analysisData = data.analysis_data as unknown as SavedQuestionsData;
       setProfile({
         id: data.id,
         analysis_data: analysisData,
         created_at: data.created_at
       });
+      
+      // Load potential questions data
+      setPotentialQuestions(analysisData.potentialQuestions || null);
+      setRelevanceThresholds(analysisData.relevanceThresholds || null);
+      setTotalJobsAnalyzed(analysisData.totalJobsAnalyzed || analysisData.jobsScrapedCount || 0);
     } catch (error) {
       console.error('Error fetching profile:', error);
       toast({
@@ -123,22 +119,16 @@ export default function ProfileDetail() {
       setLoading(false);
     }
   };
+
   const handleStartEdit = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number, currentValue: string) => {
-    setEditingQuestion({
-      category,
-      index
-    });
+    setEditingQuestion({ category, index });
     setEditValue(currentValue);
   };
+
   const handleSaveEdit = () => {
     if (!editingQuestion || !profile) return;
-    const {
-      category,
-      index
-    } = editingQuestion;
-    const updatedProfile = {
-      ...profile
-    };
+    const { category, index } = editingQuestion;
+    const updatedProfile = { ...profile };
     const questions = updatedProfile.analysis_data.questions[category]?.questions;
     if (questions && questions[index]) {
       questions[index].question = editValue;
@@ -147,41 +137,107 @@ export default function ProfileDetail() {
     setEditingQuestion(null);
     setEditValue('');
   };
+
   const handleCancelEdit = () => {
     setEditingQuestion(null);
     setEditValue('');
   };
+
   const handleDeleteQuestion = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number) => {
     if (!profile) return;
-    const updatedProfile = {
-      ...profile
-    };
+    const updatedProfile = { ...profile };
     const questions = updatedProfile.analysis_data.questions[category]?.questions;
     if (questions) {
       questions.splice(index, 1);
     }
     setProfile(updatedProfile);
   };
+
+  const handleRemoveToPotential = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number) => {
+    if (!profile) return;
+    
+    const questionToRemove = profile.analysis_data.questions[category]?.questions?.[index];
+    if (!questionToRemove) return;
+    
+    // Remove from profile questions
+    const updatedProfile = { ...profile };
+    const questions = updatedProfile.analysis_data.questions[category]?.questions;
+    if (questions) {
+      questions.splice(index, 1);
+    }
+    setProfile(updatedProfile);
+    
+    // Add to potential questions
+    setPotentialQuestions(prev => ({
+      license: prev?.license || [],
+      qualification: prev?.qualification || [],
+      certification: prev?.certification || [],
+      operationele_fit: prev?.operationele_fit || [],
+      [category]: [...(prev?.[category] || []), questionToRemove as AnalysisQuestion]
+    }));
+    
+    toast({
+      title: 'Question moved',
+      description: 'Question moved to potential relevant questions'
+    });
+  };
+
+  const handleAddPotentialQuestion = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', question: AnalysisQuestion) => {
+    if (!profile || !potentialQuestions) return;
+    
+    // Add to profile questions
+    const updatedProfile = { ...profile };
+    if (!updatedProfile.analysis_data.questions[category]) {
+      updatedProfile.analysis_data.questions[category] = { questions: [] };
+    }
+    updatedProfile.analysis_data.questions[category].questions.push(question);
+    setProfile(updatedProfile);
+    
+    // Remove from potential questions
+    setPotentialQuestions(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [category]: prev[category].filter(q => q.question !== question.question)
+      };
+    });
+    
+    toast({
+      title: 'Question added',
+      description: `Added "${question.question.slice(0, 40)}..." to profile`
+    });
+  };
+
   const handleAnswerChange = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', index: number, answer: string | string[] | number | boolean) => {
     if (!profile) return;
-    const updatedProfile = {
-      ...profile
-    };
+    const updatedProfile = { ...profile };
     const questions = updatedProfile.analysis_data.questions[category]?.questions;
     if (questions && questions[index]) {
       questions[index].userAnswer = answer;
     }
     setProfile(updatedProfile);
   };
+
   const handleSave = async () => {
     if (!profile || !user) return;
     setSaving(true);
     try {
-      const {
-        error
-      } = await supabase.from('analysis_results').update({
-        analysis_data: JSON.parse(JSON.stringify(profile.analysis_data))
-      }).eq('id', profile.id).eq('user_id', user.id);
+      // Update profile with potential questions data
+      const updatedAnalysisData = {
+        ...profile.analysis_data,
+        potentialQuestions,
+        relevanceThresholds,
+        totalJobsAnalyzed
+      };
+      
+      const { error } = await supabase
+        .from('analysis_results')
+        .update({
+          analysis_data: JSON.parse(JSON.stringify(updatedAnalysisData))
+        })
+        .eq('id', profile.id)
+        .eq('user_id', user.id);
+      
       if (error) throw error;
       toast({
         title: 'Saved!',
@@ -198,9 +254,17 @@ export default function ProfileDetail() {
       setSaving(false);
     }
   };
-  const renderQuestionList = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', title: string, icon: React.ReactNode, borderColor: string) => {
+
+  const renderQuestionList = (
+    category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
+    title: string,
+    icon: React.ReactNode,
+    borderColor: string
+  ) => {
     const questions = profile?.analysis_data.questions[category]?.questions || [];
-    return <Card className={borderColor}>
+    
+    return (
+      <Card className={borderColor}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             {icon}
@@ -209,13 +273,23 @@ export default function ProfileDetail() {
           <CardDescription>{questions.length} questions</CardDescription>
         </CardHeader>
         <CardContent>
-          {questions.length === 0 ? <p className="text-muted-foreground text-sm">No questions in this category</p> : <div className="space-y-4">
-              {questions.map((q: AnalysisQuestionLocal, index: number) => <div key={index} className="p-4 rounded-lg bg-muted/50">
-                  {editingQuestion?.category === category && editingQuestion?.index === index ? <div className="space-y-2">
-                      <Input value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus onKeyDown={e => {
-                if (e.key === 'Enter') handleSaveEdit();
-                if (e.key === 'Escape') handleCancelEdit();
-              }} />
+          {questions.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No questions in this category</p>
+          ) : (
+            <div className="space-y-4">
+              {questions.map((q: AnalysisQuestionLocal, index: number) => (
+                <div key={index} className="p-4 rounded-lg bg-muted/50">
+                  {editingQuestion?.category === category && editingQuestion?.index === index ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit();
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                      />
                       <div className="flex gap-2">
                         <Button size="sm" onClick={handleSaveEdit}>
                           <Check className="h-4 w-4 mr-1" />
@@ -226,38 +300,85 @@ export default function ProfileDetail() {
                           Cancel
                         </Button>
                       </div>
-                    </div> : <>
+                    </div>
+                  ) : (
+                    <>
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium text-foreground">{q.question}</p>
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleStartEdit(category, index, q.question)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => handleStartEdit(category, index, q.question)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteQuestion(category, index)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-amber-600 hover:text-amber-700"
+                            onClick={() => handleRemoveToPotential(category, index)}
+                            title="Move to potential questions"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteQuestion(category, index)}
+                            title="Delete permanently"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                       
                       {/* Answer Input */}
-                      {q.answerType && <QuestionAnswer answerType={q.answerType} options={q.options} experienceConfig={q.experienceConfig} value={q.userAnswer} onChange={val => handleAnswerChange(category, index, val)} />}
+                      {q.answerType && (
+                        <QuestionAnswer
+                          answerType={q.answerType}
+                          options={q.options}
+                          experienceConfig={q.experienceConfig}
+                          value={q.userAnswer}
+                          onChange={(val) => handleAnswerChange(category, index, val)}
+                        />
+                      )}
                       
                       <div className="mt-3 text-sm text-muted-foreground">
                         <p>
                           <span className="font-medium">Certainty:</span> {q.certainty} •{' '}
                           <span className="font-medium">Mentions:</span> {q.mentions}
                         </p>
-                        {(q.relevantQuote || q.quotes && q.quotes[0]) && <p className="mt-1 italic">"{q.relevantQuote || q.quotes?.[0]}"</p>}
-                        {q.sources && q.sources.length > 0 && <p className="mt-1">Sources: {q.sources.join(', ')}</p>}
+                        {(q.relevantQuote || (q.quotes && q.quotes[0])) && (
+                          <p className="mt-1 italic">"{q.relevantQuote || q.quotes?.[0]}"</p>
+                        )}
+                        {q.sources && q.sources.length > 0 && (
+                          <p className="mt-1">Sources: {q.sources.join(', ')}</p>
+                        )}
                       </div>
-                    </>}
-                </div>)}
-            </div>}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
-      </Card>;
+      </Card>
+    );
   };
+
+  const hasPotentialQuestions = potentialQuestions && (
+    (potentialQuestions.license?.length || 0) > 0 ||
+    (potentialQuestions.qualification?.length || 0) > 0 ||
+    (potentialQuestions.certification?.length || 0) > 0 ||
+    (potentialQuestions.operationele_fit?.length || 0) > 0
+  );
+
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-background">
+    return (
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
@@ -265,24 +386,26 @@ export default function ProfileDetail() {
             <div className="h-32 bg-muted rounded" />
           </div>
         </main>
-      </div>;
+      </div>
+    );
   }
+
   if (!profile) {
-    return <div className="min-h-screen bg-background">
+    return (
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <p className="text-muted-foreground">Profile not found</p>
         </main>
-      </div>;
+      </div>
+    );
   }
-  const {
-    analysis_data
-  } = profile;
-  const countryInfo = countries[analysis_data.country] || {
-    label: analysis_data.country.toUpperCase(),
-    flag: '🌍'
-  };
-  return <div className="min-h-screen bg-background">
+
+  const { analysis_data } = profile;
+  const countryInfo = countries[analysis_data.country] || { label: analysis_data.country.toUpperCase(), flag: '🌍' };
+
+  return (
+    <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8">
         <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6 gap-2">
@@ -306,10 +429,12 @@ export default function ProfileDetail() {
                 <Languages className="h-4 w-4" />
                 {languageLabels[analysis_data.language] || analysis_data.language}
               </span>
-              {analysis_data.jobsScrapedCount && <span className="flex items-center gap-1">
+              {analysis_data.jobsScrapedCount && (
+                <span className="flex items-center gap-1">
                   <Briefcase className="h-4 w-4" />
                   {analysis_data.jobsScrapedCount} jobs analyzed
-                </span>}
+                </span>
+              )}
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 Saved {new Date(analysis_data.savedAt).toLocaleDateString()}
@@ -326,14 +451,128 @@ export default function ProfileDetail() {
 
         {/* Questions by Category */}
         <div className="space-y-6">
-          {renderQuestionList('license', 'License Questions', <Car className="h-5 w-5 text-blue-500" />, 'border-l-4 border-l-blue-500')}
+          {renderQuestionList(
+            'license',
+            'License Questions',
+            <Car className="h-5 w-5 text-blue-500" />,
+            'border-l-4 border-l-blue-500'
+          )}
 
-          {renderQuestionList('qualification', 'Qualification Questions', <GraduationCap className="h-5 w-5 text-green-500" />, 'border-l-4 border-l-green-500')}
+          {renderQuestionList(
+            'qualification',
+            'Qualification Questions',
+            <GraduationCap className="h-5 w-5 text-green-500" />,
+            'border-l-4 border-l-green-500'
+          )}
 
-          {renderQuestionList('certification', 'Certification Questions', <Award className="h-5 w-5 text-purple-500" />, 'border-l-4 border-l-purple-500')}
+          {renderQuestionList(
+            'certification',
+            'Certification Questions',
+            <Award className="h-5 w-5 text-purple-500" />,
+            'border-l-4 border-l-purple-500'
+          )}
 
-          {renderQuestionList('operationele_fit', 'Operationele Fit Questions', <Wrench className="h-5 w-5 text-orange-500" />, 'border-l-4 border-l-orange-500')}
+          {renderQuestionList(
+            'operationele_fit',
+            'Operationele Fit Questions',
+            <Wrench className="h-5 w-5 text-orange-500" />,
+            'border-l-4 border-l-orange-500'
+          )}
+
+          {/* Potential Questions Section */}
+          {hasPotentialQuestions && (
+            <Card className="border-dashed border-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-5 w-5" />
+                  Potential Relevant Questions
+                </CardTitle>
+                <CardDescription>
+                  These questions are not part of the profile but can be added if you believe they are relevant.
+                  They didn't meet the automatic inclusion threshold during analysis.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* License potential questions */}
+                {potentialQuestions?.license && potentialQuestions.license.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+                      <Car className="h-4 w-4" />
+                      License
+                    </div>
+                    {potentialQuestions.license.map((q, idx) => (
+                      <PotentialQuestionItem
+                        key={`license-${idx}`}
+                        question={q}
+                        onAdd={() => handleAddPotentialQuestion('license', q)}
+                        threshold={relevanceThresholds?.license || 0}
+                        totalJobs={totalJobsAnalyzed}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Qualification potential questions */}
+                {potentialQuestions?.qualification && potentialQuestions.qualification.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                      <GraduationCap className="h-4 w-4" />
+                      Qualification
+                    </div>
+                    {potentialQuestions.qualification.map((q, idx) => (
+                      <PotentialQuestionItem
+                        key={`qual-${idx}`}
+                        question={q}
+                        onAdd={() => handleAddPotentialQuestion('qualification', q)}
+                        threshold={relevanceThresholds?.qualification || 0}
+                        totalJobs={totalJobsAnalyzed}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Certification potential questions */}
+                {potentialQuestions?.certification && potentialQuestions.certification.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-purple-600">
+                      <Award className="h-4 w-4" />
+                      Certification
+                    </div>
+                    {potentialQuestions.certification.map((q, idx) => (
+                      <PotentialQuestionItem
+                        key={`cert-${idx}`}
+                        question={q}
+                        onAdd={() => handleAddPotentialQuestion('certification', q)}
+                        threshold={relevanceThresholds?.certification || 0}
+                        totalJobs={totalJobsAnalyzed}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Operationele Fit potential questions */}
+                {potentialQuestions?.operationele_fit && potentialQuestions.operationele_fit.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-orange-600">
+                      <Wrench className="h-4 w-4" />
+                      Operationele Fit
+                    </div>
+                    {potentialQuestions.operationele_fit.map((q, idx) => (
+                      <PotentialQuestionItem
+                        key={`opfit-${idx}`}
+                        question={q}
+                        onAdd={() => handleAddPotentialQuestion('operationele_fit', q)}
+                        threshold={relevanceThresholds?.operationele_fit || 0}
+                        totalJobs={totalJobsAnalyzed}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
-    </div>;
+    </div>
+  );
 }

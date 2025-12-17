@@ -142,6 +142,14 @@ export interface AnalysisMetrics {
 
 export interface SavedQuestionsData {
   questions: AnalysisResult;
+  potentialQuestions?: PotentialQuestions;
+  relevanceThresholds?: {
+    license: number;
+    certification: number;
+    qualification: number;
+    operationele_fit: number;
+  };
+  totalJobsAnalyzed?: number;
   profile: string;
   country: string;
   language: string;

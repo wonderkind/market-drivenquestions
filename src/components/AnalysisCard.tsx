@@ -1,22 +1,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { AnalysisQuestion } from '@/types/job';
 import { QuestionAnswer } from '@/components/QuestionAnswer';
-import { FileText, Quote, Building, TrendingUp } from 'lucide-react';
+import { Quote, Building, TrendingUp, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
 interface AnalysisCardProps {
   title: string;
   icon: React.ReactNode;
   questions: AnalysisQuestion[];
   color: string;
   onAnswerChange?: (index: number, answer: string | string[] | number | boolean) => void;
+  onRemove?: (index: number) => void;
 }
 export function AnalysisCard({
   title,
   icon,
   questions,
   color,
-  onAnswerChange
+  onAnswerChange,
+  onRemove
 }: AnalysisCardProps) {
   const getCertaintyColor = (certainty: string) => {
     switch (certainty) {
@@ -54,9 +58,22 @@ export function AnalysisCard({
         {questions.map((q, index) => <div key={index} className="bg-muted/50 rounded-lg p-4 border border-border/50">
             <div className="flex items-start justify-between gap-4 mb-3">
               <h4 className="font-medium text-foreground">{q.question}</h4>
-              <Badge variant="outline" className={cn('shrink-0', getCertaintyColor(q.certainty))}>
-                {q.certainty}
-              </Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="outline" className={cn(getCertaintyColor(q.certainty))}>
+                  {q.certainty}
+                </Badge>
+                {onRemove && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                    onClick={() => onRemove(index)}
+                    title="Move to potential questions"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Answer Input */}
