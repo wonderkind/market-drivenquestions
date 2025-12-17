@@ -83,22 +83,24 @@ interface PotentialQuestionItemProps {
   threshold: number;
   totalJobs: number;
 }
-
-function PotentialQuestionItem({ question, onAdd, threshold, totalJobs }: PotentialQuestionItemProps) {
+function PotentialQuestionItem({
+  question,
+  onAdd,
+  threshold,
+  totalJobs
+}: PotentialQuestionItemProps) {
   const mentions = question.mentions || 0;
-  const percentage = totalJobs > 0 ? ((mentions / totalJobs) * 100).toFixed(1) : '0';
-  const thresholdPercentage = totalJobs > 0 ? ((threshold / totalJobs) * 100).toFixed(0) : '0';
+  const percentage = totalJobs > 0 ? (mentions / totalJobs * 100).toFixed(1) : '0';
+  const thresholdPercentage = totalJobs > 0 ? (threshold / totalJobs * 100).toFixed(0) : '0';
   const shortfall = threshold - mentions;
-
-  return (
-    <div className="p-4 rounded-lg border border-border bg-background">
+  return <div className="p-4 rounded-lg border border-border bg-background">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-foreground">{question.question}</p>
           
           {/* Threshold context badges */}
           <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-            <Badge variant="secondary" className="gap-1">
+            <Badge variant="secondary" className="gap-1 text-primary-foreground">
               📊 {mentions} of {totalJobs} jobs ({percentage}%)
             </Badge>
             <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
@@ -112,26 +114,20 @@ function PotentialQuestionItem({ question, onAdd, threshold, totalJobs }: Potent
             Add manually if you believe it's relevant for this profile.
           </p>
           
-          {question.quotes && question.quotes.length > 0 && (
-            <div className="mt-2 text-xs text-muted-foreground">
+          {question.quotes && question.quotes.length > 0 && <div className="mt-2 text-xs text-muted-foreground">
               <span className="font-medium">Quote:</span> "{question.quotes[0].slice(0, 100)}..."
-            </div>
-          )}
-          {question.sources && question.sources.length > 0 && (
-            <div className="mt-1 text-xs text-muted-foreground">
+            </div>}
+          {question.sources && question.sources.length > 0 && <div className="mt-1 text-xs text-muted-foreground">
               <span className="font-medium">Sources:</span> {question.sources.slice(0, 3).join(', ')}
-            </div>
-          )}
+            </div>}
         </div>
         <Button size="sm" variant="outline" onClick={onAdd} className="gap-1 flex-shrink-0">
           <Plus className="h-3 w-3" />
           Add
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 }
-
 export default function CreateProfile() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -328,12 +324,9 @@ export default function CreateProfile() {
     }
     setAnalysis(updatedAnalysis);
   };
-  const handleAddPotentialQuestion = (
-    category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
-    question: AnalysisQuestion
-  ) => {
+  const handleAddPotentialQuestion = (category: 'license' | 'qualification' | 'certification' | 'operationele_fit', question: AnalysisQuestion) => {
     if (!analysis || !potentialQuestions) return;
-    
+
     // Add to analysis
     setAnalysis(prev => {
       if (!prev) return prev;
@@ -345,7 +338,7 @@ export default function CreateProfile() {
         }
       };
     });
-    
+
     // Remove from potential questions
     setPotentialQuestions(prev => {
       if (!prev) return prev;
@@ -354,7 +347,6 @@ export default function CreateProfile() {
         [category]: prev[category].filter(q => q.question !== question.question)
       };
     });
-    
     toast({
       title: 'Question added',
       description: `Added "${question.question.slice(0, 40)}..." to ${category}`
@@ -649,7 +641,7 @@ export default function CreateProfile() {
 
                     <div className="space-y-2">
                       <Label>Jobs per Title</Label>
-                      <Select value={String(numPages)} onValueChange={(v) => setNumPages(Number(v))}>
+                      <Select value={String(numPages)} onValueChange={v => setNumPages(Number(v))}>
                         <SelectTrigger>
                           <Briefcase className="mr-2 h-4 w-4 text-muted-foreground" />
                           <SelectValue />
@@ -838,13 +830,7 @@ export default function CreateProfile() {
                 <AnalysisCard title="Operationele Fit Questions" icon={<Wrench className="h-5 w-5 text-orange-500" />} questions={analysis.operationele_fit?.questions || []} color="border-l-4 border-l-orange-500" onAnswerChange={(idx, val) => handleAnswerChange('operationele_fit', idx, val)} />
 
                 {/* Potential Questions Section */}
-                {potentialQuestions && (
-                  potentialQuestions.license?.length > 0 ||
-                  potentialQuestions.qualification?.length > 0 ||
-                  potentialQuestions.certification?.length > 0 ||
-                  potentialQuestions.operationele_fit?.length > 0
-                ) && (
-                  <Card className="border-dashed border-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10">
+                {potentialQuestions && (potentialQuestions.license?.length > 0 || potentialQuestions.qualification?.length > 0 || potentialQuestions.certification?.length > 0 || potentialQuestions.operationele_fit?.length > 0) && <Card className="border-dashed border-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
                         <AlertTriangle className="h-5 w-5" />
@@ -857,83 +843,42 @@ export default function CreateProfile() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                       {/* License potential questions */}
-                      {potentialQuestions.license?.length > 0 && (
-                        <div className="space-y-3">
+                      {potentialQuestions.license?.length > 0 && <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
                             <Car className="h-4 w-4" />
                             License
                           </div>
-                          {potentialQuestions.license.map((q, idx) => (
-                            <PotentialQuestionItem
-                              key={`license-${idx}`}
-                              question={q}
-                              onAdd={() => handleAddPotentialQuestion('license', q)}
-                              threshold={relevanceThresholds?.license || 0}
-                              totalJobs={jobs.length}
-                            />
-                          ))}
-                        </div>
-                      )}
+                          {potentialQuestions.license.map((q, idx) => <PotentialQuestionItem key={`license-${idx}`} question={q} onAdd={() => handleAddPotentialQuestion('license', q)} threshold={relevanceThresholds?.license || 0} totalJobs={jobs.length} />)}
+                        </div>}
 
                       {/* Qualification potential questions */}
-                      {potentialQuestions.qualification?.length > 0 && (
-                        <div className="space-y-3">
+                      {potentialQuestions.qualification?.length > 0 && <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                             <GraduationCap className="h-4 w-4" />
                             Qualification
                           </div>
-                          {potentialQuestions.qualification.map((q, idx) => (
-                            <PotentialQuestionItem
-                              key={`qual-${idx}`}
-                              question={q}
-                              onAdd={() => handleAddPotentialQuestion('qualification', q)}
-                              threshold={relevanceThresholds?.qualification || 0}
-                              totalJobs={jobs.length}
-                            />
-                          ))}
-                        </div>
-                      )}
+                          {potentialQuestions.qualification.map((q, idx) => <PotentialQuestionItem key={`qual-${idx}`} question={q} onAdd={() => handleAddPotentialQuestion('qualification', q)} threshold={relevanceThresholds?.qualification || 0} totalJobs={jobs.length} />)}
+                        </div>}
 
                       {/* Certification potential questions */}
-                      {potentialQuestions.certification?.length > 0 && (
-                        <div className="space-y-3">
+                      {potentialQuestions.certification?.length > 0 && <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-purple-600">
                             <Award className="h-4 w-4" />
                             Certification
                           </div>
-                          {potentialQuestions.certification.map((q, idx) => (
-                            <PotentialQuestionItem
-                              key={`cert-${idx}`}
-                              question={q}
-                              onAdd={() => handleAddPotentialQuestion('certification', q)}
-                              threshold={relevanceThresholds?.certification || 0}
-                              totalJobs={jobs.length}
-                            />
-                          ))}
-                        </div>
-                      )}
+                          {potentialQuestions.certification.map((q, idx) => <PotentialQuestionItem key={`cert-${idx}`} question={q} onAdd={() => handleAddPotentialQuestion('certification', q)} threshold={relevanceThresholds?.certification || 0} totalJobs={jobs.length} />)}
+                        </div>}
 
                       {/* Operationele Fit potential questions */}
-                      {potentialQuestions.operationele_fit?.length > 0 && (
-                        <div className="space-y-3">
+                      {potentialQuestions.operationele_fit?.length > 0 && <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-orange-600">
                             <Wrench className="h-4 w-4" />
                             Operationele Fit
                           </div>
-                          {potentialQuestions.operationele_fit.map((q, idx) => (
-                            <PotentialQuestionItem
-                              key={`opfit-${idx}`}
-                              question={q}
-                              onAdd={() => handleAddPotentialQuestion('operationele_fit', q)}
-                              threshold={relevanceThresholds?.operationele_fit || 0}
-                              totalJobs={jobs.length}
-                            />
-                          ))}
-                        </div>
-                      )}
+                          {potentialQuestions.operationele_fit.map((q, idx) => <PotentialQuestionItem key={`opfit-${idx}`} question={q} onAdd={() => handleAddPotentialQuestion('operationele_fit', q)} threshold={relevanceThresholds?.operationele_fit || 0} totalJobs={jobs.length} />)}
+                        </div>}
                     </CardContent>
-                  </Card>
-                )}
+                  </Card>}
               </> : null}
           </div>}
       </main>
