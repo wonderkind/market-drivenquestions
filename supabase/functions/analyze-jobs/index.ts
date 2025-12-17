@@ -293,39 +293,60 @@ Be specific with quotes - use actual text from the job descriptions. **Als een v
 
     console.log(`Applying relevance thresholds: License=${thresholds.license}, Cert=${thresholds.certification}, Qual=${thresholds.qualification}, OpFit=${thresholds.operationele_fit} (of ${totalJobs} jobs)`);
     
-    const filterQuestions = (questions: any[], threshold: number) => {
-      if (!Array.isArray(questions)) return [];
-      return questions.filter((q) => {
+    const filterQuestionsWithRejected = (questions: any[], threshold: number) => {
+      if (!Array.isArray(questions)) return { accepted: [], rejected: [] };
+      const accepted = questions.filter((q) => {
         const mentions = typeof q.mentions === "number" ? q.mentions : 0;
         return mentions >= threshold;
       });
+      const rejected = questions.filter((q) => {
+        const mentions = typeof q.mentions === "number" ? q.mentions : 0;
+        return mentions > 0 && mentions < threshold;
+      });
+      return { accepted, rejected };
     };
     
-    // Filter each category with its specific threshold
+    // Filter each category and collect rejected questions
+    const potentialQuestions: Record<string, any[]> = {
+      license: [],
+      certification: [],
+      qualification: [],
+      operationele_fit: []
+    };
+
     if (analysis.license?.questions) {
       const before = analysis.license.questions.length;
-      analysis.license.questions = filterQuestions(analysis.license.questions, thresholds.license);
-      console.log(`License: ${before} -> ${analysis.license.questions.length} questions (threshold: ${thresholds.license})`);
+      const { accepted, rejected } = filterQuestionsWithRejected(analysis.license.questions, thresholds.license);
+      analysis.license.questions = accepted;
+      potentialQuestions.license = rejected;
+      console.log(`License: ${before} -> ${accepted.length} accepted, ${rejected.length} potential (threshold: ${thresholds.license})`);
     }
     if (analysis.qualification?.questions) {
       const before = analysis.qualification.questions.length;
-      analysis.qualification.questions = filterQuestions(analysis.qualification.questions, thresholds.qualification);
-      console.log(`Qualification: ${before} -> ${analysis.qualification.questions.length} questions (threshold: ${thresholds.qualification})`);
+      const { accepted, rejected } = filterQuestionsWithRejected(analysis.qualification.questions, thresholds.qualification);
+      analysis.qualification.questions = accepted;
+      potentialQuestions.qualification = rejected;
+      console.log(`Qualification: ${before} -> ${accepted.length} accepted, ${rejected.length} potential (threshold: ${thresholds.qualification})`);
     }
     if (analysis.certification?.questions) {
       const before = analysis.certification.questions.length;
-      analysis.certification.questions = filterQuestions(analysis.certification.questions, thresholds.certification);
-      console.log(`Certification: ${before} -> ${analysis.certification.questions.length} questions (threshold: ${thresholds.certification})`);
+      const { accepted, rejected } = filterQuestionsWithRejected(analysis.certification.questions, thresholds.certification);
+      analysis.certification.questions = accepted;
+      potentialQuestions.certification = rejected;
+      console.log(`Certification: ${before} -> ${accepted.length} accepted, ${rejected.length} potential (threshold: ${thresholds.certification})`);
     }
     if (analysis.operationele_fit?.questions) {
       const before = analysis.operationele_fit.questions.length;
-      analysis.operationele_fit.questions = filterQuestions(analysis.operationele_fit.questions, thresholds.operationele_fit);
-      console.log(`Operationele Fit: ${before} -> ${analysis.operationele_fit.questions.length} questions (threshold: ${thresholds.operationele_fit})`);
+      const { accepted, rejected } = filterQuestionsWithRejected(analysis.operationele_fit.questions, thresholds.operationele_fit);
+      analysis.operationele_fit.questions = accepted;
+      potentialQuestions.operationele_fit = rejected;
+      console.log(`Operationele Fit: ${before} -> ${accepted.length} accepted, ${rejected.length} potential (threshold: ${thresholds.operationele_fit})`);
     }
 
     return new Response(
       JSON.stringify({
         analysis,
+        potentialQuestions,
         jobCount: jobs.length,
         relevanceThresholds: thresholds,
       }),

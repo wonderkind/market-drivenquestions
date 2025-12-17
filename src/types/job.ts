@@ -117,6 +117,13 @@ export interface AnalysisResult {
   summary: string;
 }
 
+export interface PotentialQuestions {
+  license: AnalysisQuestion[];
+  qualification: AnalysisQuestion[];
+  certification: AnalysisQuestion[];
+  operationele_fit: AnalysisQuestion[];
+}
+
 export interface AnalysisMetrics {
   totalJobsAnalyzed: number;
   basicJobsCount: number;
