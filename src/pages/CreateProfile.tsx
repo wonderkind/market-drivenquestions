@@ -9,12 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/Header';
 import { AnalysisCard } from '@/components/AnalysisCard';
 import { TablePagination } from '@/components/TablePagination';
+import { PotentialQuestionItem } from '@/components/PotentialQuestionItem';
 import { useJobSearch } from '@/hooks/useJobSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult, PotentialQuestions, AnalysisQuestion } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle, Plus } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle } from 'lucide-react';
+
 const countries = [{
   value: 'nl',
   label: 'Netherlands',
@@ -40,6 +42,7 @@ const countries = [{
   label: 'France',
   flag: '🇫🇷'
 }];
+
 const languages = [{
   value: 'en',
   label: 'English'
@@ -53,6 +56,7 @@ const languages = [{
   value: 'fr',
   label: 'French'
 }];
+
 const dateOptions = [{
   value: 'all',
   label: 'All Time'
@@ -69,64 +73,12 @@ const dateOptions = [{
   value: 'month',
   label: 'This Month'
 }];
+
 interface LocationState {
   profile?: string;
   country?: string;
   language?: string;
   profileId?: string;
-}
-
-// Helper component for displaying potential questions with threshold context
-interface PotentialQuestionItemProps {
-  question: AnalysisQuestion;
-  onAdd: () => void;
-  threshold: number;
-  totalJobs: number;
-}
-function PotentialQuestionItem({
-  question,
-  onAdd,
-  threshold,
-  totalJobs
-}: PotentialQuestionItemProps) {
-  const mentions = question.mentions || 0;
-  const percentage = totalJobs > 0 ? (mentions / totalJobs * 100).toFixed(1) : '0';
-  const thresholdPercentage = totalJobs > 0 ? (threshold / totalJobs * 100).toFixed(0) : '0';
-  const shortfall = threshold - mentions;
-  return <div className="p-4 rounded-lg border border-border bg-background">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-foreground">{question.question}</p>
-          
-          {/* Threshold context badges */}
-          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-            <Badge variant="secondary" className="gap-1 text-primary-foreground">
-              📊 {mentions} of {totalJobs} jobs ({percentage}%)
-            </Badge>
-            <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
-              🎯 Threshold: {threshold} ({thresholdPercentage}%)
-            </Badge>
-          </div>
-          
-          {/* Explanation why it didn't meet threshold */}
-          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2 italic">
-            ⚠️ This question needed {shortfall} more mention{shortfall !== 1 ? 's' : ''} to be automatically included.
-            Add manually if you believe it's relevant for this profile.
-          </p>
-          
-          {question.quotes && question.quotes.length > 0 && <div className="mt-2 text-xs text-muted-foreground">
-              <span className="font-medium">Quote:</span> "{question.quotes[0].slice(0, 100)}..."
-            </div>}
-          {question.sources && question.sources.length > 0 && <div className="mt-1 text-xs text-muted-foreground">
-              <span className="font-medium">Sources:</span> {question.sources.slice(0, 3).join(', ')}
-            </div>}
-        </div>
-        <Button size="sm" variant="outline" onClick={onAdd} className="gap-1 flex-shrink-0">
-          <Plus className="h-3 w-3" />
-          Add
-        </Button>
-      </div>
-    </div>;
 }
 export default function CreateProfile() {
   const navigate = useNavigate();
@@ -352,6 +304,42 @@ export default function CreateProfile() {
       description: `Added "${question.question.slice(0, 40)}..." to ${category}`
     });
   };
+  const handleRemoveFromProfile = (
+    category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
+    questionIndex: number
+  ) => {
+    if (!analysis) return;
+    
+    // Get the question being removed
+    const questionToRemove = analysis[category]?.questions?.[questionIndex];
+    if (!questionToRemove) return;
+    
+    // Remove from analysis
+    setAnalysis(prev => {
+      if (!prev) return prev;
+      const updatedQuestions = [...(prev[category]?.questions || [])];
+      updatedQuestions.splice(questionIndex, 1);
+      return {
+        ...prev,
+        [category]: { questions: updatedQuestions }
+      };
+    });
+    
+    // Add back to potentialQuestions
+    setPotentialQuestions(prev => ({
+      license: prev?.license || [],
+      qualification: prev?.qualification || [],
+      certification: prev?.certification || [],
+      operationele_fit: prev?.operationele_fit || [],
+      [category]: [...(prev?.[category] || []), questionToRemove]
+    }));
+    
+    toast({
+      title: 'Question moved',
+      description: 'Question moved to potential relevant questions'
+    });
+  };
+
   const handleSave = async () => {
     if (!analysis || !user) {
       toast({
@@ -365,6 +353,9 @@ export default function CreateProfile() {
     try {
       const analysisData = JSON.parse(JSON.stringify({
         questions: analysis,
+        potentialQuestions: potentialQuestions,
+        relevanceThresholds: relevanceThresholds,
+        totalJobsAnalyzed: jobs.length,
         profile,
         country,
         language,
@@ -821,13 +812,13 @@ export default function CreateProfile() {
                     </CardContent>
                   </Card>}
 
-                <AnalysisCard title="License Questions" icon={<Car className="h-5 w-5 text-blue-500" />} questions={analysis.license?.questions || []} color="border-l-4 border-l-blue-500" onAnswerChange={(idx, val) => handleAnswerChange('license', idx, val)} />
+                <AnalysisCard title="License Questions" icon={<Car className="h-5 w-5 text-blue-500" />} questions={analysis.license?.questions || []} color="border-l-4 border-l-blue-500" onAnswerChange={(idx, val) => handleAnswerChange('license', idx, val)} onRemove={(idx) => handleRemoveFromProfile('license', idx)} />
 
-                <AnalysisCard title="Qualification Questions" icon={<GraduationCap className="h-5 w-5 text-green-500" />} questions={analysis.qualification?.questions || []} color="border-l-4 border-l-green-500" onAnswerChange={(idx, val) => handleAnswerChange('qualification', idx, val)} />
+                <AnalysisCard title="Qualification Questions" icon={<GraduationCap className="h-5 w-5 text-green-500" />} questions={analysis.qualification?.questions || []} color="border-l-4 border-l-green-500" onAnswerChange={(idx, val) => handleAnswerChange('qualification', idx, val)} onRemove={(idx) => handleRemoveFromProfile('qualification', idx)} />
 
-                <AnalysisCard title="Certification Questions" icon={<Award className="h-5 w-5 text-purple-500" />} questions={analysis.certification?.questions || []} color="border-l-4 border-l-purple-500" onAnswerChange={(idx, val) => handleAnswerChange('certification', idx, val)} />
+                <AnalysisCard title="Certification Questions" icon={<Award className="h-5 w-5 text-purple-500" />} questions={analysis.certification?.questions || []} color="border-l-4 border-l-purple-500" onAnswerChange={(idx, val) => handleAnswerChange('certification', idx, val)} onRemove={(idx) => handleRemoveFromProfile('certification', idx)} />
 
-                <AnalysisCard title="Operationele Fit Questions" icon={<Wrench className="h-5 w-5 text-orange-500" />} questions={analysis.operationele_fit?.questions || []} color="border-l-4 border-l-orange-500" onAnswerChange={(idx, val) => handleAnswerChange('operationele_fit', idx, val)} />
+                <AnalysisCard title="Operationele Fit Questions" icon={<Wrench className="h-5 w-5 text-orange-500" />} questions={analysis.operationele_fit?.questions || []} color="border-l-4 border-l-orange-500" onAnswerChange={(idx, val) => handleAnswerChange('operationele_fit', idx, val)} onRemove={(idx) => handleRemoveFromProfile('operationele_fit', idx)} />
 
                 {/* Potential Questions Section */}
                 {potentialQuestions && (potentialQuestions.license?.length > 0 || potentialQuestions.qualification?.length > 0 || potentialQuestions.certification?.length > 0 || potentialQuestions.operationele_fit?.length > 0) && <Card className="border-dashed border-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10">
