@@ -11,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig, PotentialQuestions } from '@/types/job';
 import { QuestionAnswer } from '@/components/QuestionAnswer';
 import { PotentialQuestionItem } from '@/components/PotentialQuestionItem';
-import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench, AlertTriangle, Minus } from 'lucide-react';
+import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench, AlertTriangle, Minus, RefreshCw } from 'lucide-react';
+import { DeleteProfileDialog } from '@/components/DeleteProfileDialog';
 
 interface AnalysisQuestionLocal {
   question: string;
@@ -63,8 +64,10 @@ export default function ProfileDetail() {
     operationele_fit: number;
   } | null>(null);
   const [totalJobsAnalyzed, setTotalJobsAnalyzed] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{
     category: 'license' | 'qualification' | 'certification' | 'operationele_fit';
     index: number;
@@ -255,6 +258,49 @@ export default function ProfileDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!profile || !user) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('analysis_results')
+        .delete()
+        .eq('id', profile.id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Profile deleted',
+        description: `Deleted "${profile.analysis_data?.profile}" profile`,
+      });
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: 'Delete failed',
+        description: 'Could not delete profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (!profile) return;
+    navigate('/create-profile', {
+      state: {
+        profile: profile.analysis_data.profile,
+        country: profile.analysis_data.country,
+        language: profile.analysis_data.language,
+        profileId: profile.id,
+        regenerateMode: true,
+      },
+    });
+  };
+
   const renderQuestionList = (
     category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
     title: string,
@@ -441,10 +487,22 @@ export default function ProfileDetail() {
               </span>
             </CardDescription>
           </CardHeader>
-          <CardContent>
+<CardContent className="flex flex-wrap gap-3">
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Changes
+            </Button>
+            <Button onClick={handleRegenerate} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Regenerate
+            </Button>
+            <Button 
+              onClick={() => setDeleteDialogOpen(true)} 
+              variant="outline" 
+              className="gap-2 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
             </Button>
           </CardContent>
         </Card>
@@ -572,6 +630,21 @@ export default function ProfileDetail() {
             </Card>
           )}
         </div>
+
+        <DeleteProfileDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          profileName={profile?.analysis_data?.profile || ''}
+          countryLabel={`${countryInfo.flag} ${countryInfo.label}`}
+          questionsCount={
+            (profile?.analysis_data?.questions?.license?.questions?.length || 0) +
+            (profile?.analysis_data?.questions?.qualification?.questions?.length || 0) +
+            (profile?.analysis_data?.questions?.certification?.questions?.length || 0) +
+            (profile?.analysis_data?.questions?.operationele_fit?.questions?.length || 0)
+          }
+          onConfirm={handleDelete}
+          isDeleting={deleting}
+        />
       </main>
     </div>
   );

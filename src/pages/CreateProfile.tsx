@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult, PotentialQuestions, AnalysisQuestion } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const countries = [{
   value: 'nl',
@@ -79,6 +79,7 @@ interface LocationState {
   country?: string;
   language?: string;
   profileId?: string;
+  regenerateMode?: boolean;
 }
 export default function CreateProfile() {
   const navigate = useNavigate();
@@ -96,8 +97,9 @@ export default function CreateProfile() {
     loading,
     translating
   } = useJobSearch();
-  const state = location.state as LocationState | undefined;
+const state = location.state as LocationState | undefined;
   const isReanalyseMode = !!state?.profileId;
+  const isRegenerateMode = !!state?.regenerateMode;
   const hasPrefilledData = !!(state?.profile || state?.country || state?.language);
 
   // Form state
@@ -421,8 +423,23 @@ export default function CreateProfile() {
 
         
 
+{/* Regenerate Mode Banner */}
+        {isRegenerateMode && step === 'profile' && (
+          <Card className="mb-6 border-amber-500/20 bg-amber-500/5">
+            <CardContent className="py-4 border border-amber-500/20">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <RefreshCw className="h-4 w-4 text-amber-500" />
+                <span className="font-medium text-foreground">Regenerating Existing Profile</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will replace the existing profile with new analysis data. The old profile will be updated when you save.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Pre-filled Context Banner */}
-        {hasPrefilledData && step === 'profile' && <Card className="mb-6 border-primary/20 bg-primary/5">
+        {hasPrefilledData && !isRegenerateMode && step === 'profile' && <Card className="mb-6 border-primary/20 bg-primary/5">
             <CardContent className="py-4 border">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                 <Sparkles className="h-4 w-4 text-primary" />

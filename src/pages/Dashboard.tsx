@@ -18,6 +18,7 @@ import { SavedQuestionsData } from '@/types/job';
 import { DashboardFilters, SUPPORTED_COUNTRIES } from '@/components/DashboardFilters';
 import { CountryStatusCell } from '@/components/CountryStatusCell';
 import { TablePagination } from '@/components/TablePagination';
+import { DeleteProfileDialog } from '@/components/DeleteProfileDialog';
 import { FolderOpen, RefreshCw, Loader2 } from 'lucide-react';
 
 interface CountryAnalysis {
@@ -43,10 +44,26 @@ interface ProfileMatrix {
   countries: Record<string, CountryAnalysis>;
 }
 
+interface DeleteDialogState {
+  open: boolean;
+  profileName: string;
+  countryLabel: string;
+  questionsCount: number;
+  analysisId: string;
+}
+
 export default function Dashboard() {
   const [profilesMatrix, setProfilesMatrix] = useState<ProfileMatrix[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    open: false,
+    profileName: '',
+    countryLabel: '',
+    questionsCount: 0,
+    analysisId: '',
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'analysed' | 'not_created'>('all');
   const [countryFilter, setCountryFilter] = useState('all');
@@ -224,7 +241,7 @@ export default function Dashboard() {
 
   const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage);
 
-  const handleCellClick = (profile: ProfileMatrix, countryCode: string, analysis?: CountryAnalysis) => {
+const handleCellClick = (profile: ProfileMatrix, countryCode: string, analysis?: CountryAnalysis) => {
     if (analysis?.status === 'analysed' && analysis.analysisId) {
       navigate(`/profile/${analysis.analysisId}`);
     } else {
@@ -236,6 +253,61 @@ export default function Dashboard() {
           language: countryCode === 'nl' ? 'nl' : countryCode === 'de' ? 'de' : 'en',
         },
       });
+    }
+  };
+
+  const handleRegenerate = (profile: ProfileMatrix, countryCode: string, analysis: CountryAnalysis) => {
+    navigate('/create-profile', {
+      state: {
+        profile: profile.title,
+        onetCode: profile.code,
+        country: countryCode,
+        language: analysis.language || (countryCode === 'nl' ? 'nl' : countryCode === 'de' ? 'de' : 'en'),
+        profileId: analysis.analysisId,
+        regenerateMode: true,
+      },
+    });
+  };
+
+  const handleDeleteClick = (profile: ProfileMatrix, countryCode: string, analysis: CountryAnalysis) => {
+    const countryInfo = SUPPORTED_COUNTRIES.find(c => c.code === countryCode);
+    setDeleteDialog({
+      open: true,
+      profileName: profile.title,
+      countryLabel: countryInfo ? `${countryInfo.flag} ${countryInfo.label}` : countryCode.toUpperCase(),
+      questionsCount: analysis.questionsCount || 0,
+      analysisId: analysis.analysisId || '',
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!user || !deleteDialog.analysisId) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('analysis_results')
+        .delete()
+        .eq('id', deleteDialog.analysisId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Profile deleted',
+        description: `Deleted "${deleteDialog.profileName}" profile`,
+      });
+      
+      setDeleteDialog(prev => ({ ...prev, open: false }));
+      await fetchData();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: 'Delete failed',
+        description: 'Could not delete profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -374,20 +446,27 @@ export default function Dashboard() {
                             {profile.code}
                           </TableCell>
                           <TableCell className="font-medium">{profile.title}</TableCell>
-                          {SUPPORTED_COUNTRIES.map((country) => (
-                            <TableCell key={country.code} className="p-2">
-                              <CountryStatusCell
-                                analysis={profile.countries[country.code]}
-                                onClick={() =>
-                                  handleCellClick(
-                                    profile,
-                                    country.code,
-                                    profile.countries[country.code]
-                                  )
-                                }
-                              />
-                            </TableCell>
-                          ))}
+{SUPPORTED_COUNTRIES.map((country) => {
+                            const analysis = profile.countries[country.code];
+                            return (
+                              <TableCell key={country.code} className="p-2">
+                                <CountryStatusCell
+                                  analysis={analysis}
+                                  onClick={() => handleCellClick(profile, country.code, analysis)}
+                                  onRegenerate={
+                                    analysis?.status === 'analysed'
+                                      ? () => handleRegenerate(profile, country.code, analysis)
+                                      : undefined
+                                  }
+                                  onDelete={
+                                    analysis?.status === 'analysed'
+                                      ? () => handleDeleteClick(profile, country.code, analysis)
+                                      : undefined
+                                  }
+                                />
+                              </TableCell>
+                            );
+                          })}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -407,6 +486,16 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        <DeleteProfileDialog
+          open={deleteDialog.open}
+          onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}
+          profileName={deleteDialog.profileName}
+          countryLabel={deleteDialog.countryLabel}
+          questionsCount={deleteDialog.questionsCount}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={deleting}
+        />
       </main>
     </div>
   );
