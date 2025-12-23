@@ -10,6 +10,9 @@ export interface Lead {
   locations: string[];
   job_country: string;
   latest_job_posted: string | null;
+  recent_jobs_7d: number;
+  recent_jobs_30d: number;
+  matching_titles_count: number;
 }
 
 export interface LeadFilters {
@@ -27,12 +30,17 @@ export interface ProfileOption {
   created_at: string;
 }
 
+export type SortField = 'job_count' | 'recent_jobs_7d' | 'latest_job_posted' | 'employer_name';
+export type SortOrder = 'asc' | 'desc';
+
 export function useLeadSearch() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('job_count');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const fetchProfiles = async () => {
     setProfilesLoading(true);
@@ -63,6 +71,8 @@ export function useLeadSearch() {
   };
 
   const searchLeads = async (filters: LeadFilters) => {
+    if (!filters.profileId) return;
+    
     setLoading(true);
     setError(null);
 
@@ -79,30 +89,43 @@ export function useLeadSearch() {
 
       const analysisData = profileData.analysis_data as {
         profile?: string;
-        translations?: { job_title?: string }[];
+        translations?: { job_title?: string; country?: string }[];
       };
 
-      // Build search terms from profile name and translations
-      const searchTerms: string[] = [];
-      if (analysisData?.profile) {
-        // Split profile name into keywords
-        const keywords = analysisData.profile.split(/[\s,]+/).filter(w => w.length > 3);
-        searchTerms.push(...keywords.slice(0, 3)); // Take first 3 significant words
-      }
+      // Build search patterns from profile translations for the target country
+      const jobTitlePatterns: string[] = [];
+      
       if (analysisData?.translations) {
         analysisData.translations.forEach(t => {
-          if (t.job_title) searchTerms.push(t.job_title);
+          if (t.job_title) {
+            // Filter by target country if specified
+            if (filters.country !== 'all') {
+              if (t.country?.toUpperCase() === filters.country.toUpperCase()) {
+                jobTitlePatterns.push(t.job_title.toLowerCase());
+              }
+            } else {
+              jobTitlePatterns.push(t.job_title.toLowerCase());
+            }
+          }
         });
       }
+
+      // If no translations found, use profile name keywords as fallback
+      if (jobTitlePatterns.length === 0 && analysisData?.profile) {
+        const keywords = analysisData.profile.split(/[\s,]+/).filter(w => w.length > 3);
+        jobTitlePatterns.push(...keywords.slice(0, 5).map(k => k.toLowerCase()));
+      }
+
+      console.log('Searching with patterns:', jobTitlePatterns);
 
       // Query jobs table
       let query = supabase
         .from('jobs')
-        .select('employer_name, employer_website, employer_logo, job_title, job_location, job_country, job_posted_at')
+        .select('employer_name, employer_website, employer_logo, job_title, job_location, job_country, job_posted_at, created_at')
         .not('employer_name', 'is', null);
 
       if (filters.country && filters.country !== 'all') {
-        query = query.eq('job_country', filters.country);
+        query = query.ilike('job_country', filters.country);
       }
 
       if (filters.daysPosted) {
@@ -115,22 +138,40 @@ export function useLeadSearch() {
 
       if (jobsError) throw jobsError;
 
-      // Aggregate by employer
+      // Calculate date thresholds for recency metrics
+      const now = new Date();
+      const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Filter jobs by matching patterns and aggregate by employer
       const employerMap = new Map<string, {
         employer_name: string;
         employer_website: string | null;
         employer_logo: string | null;
         job_titles: Set<string>;
+        matching_titles: Set<string>;
         locations: Set<string>;
         job_country: string;
         latest_job_posted: string | null;
         job_count: number;
+        recent_jobs_7d: number;
+        recent_jobs_30d: number;
       }>();
 
       (jobsData || []).forEach(job => {
-        if (!job.employer_name) return;
+        if (!job.employer_name || !job.job_title) return;
+
+        const jobTitleLower = job.job_title.toLowerCase();
+        
+        // Check if this job matches any of our patterns
+        const isMatch = jobTitlePatterns.length === 0 || jobTitlePatterns.some(pattern => 
+          jobTitleLower.includes(pattern) || pattern.includes(jobTitleLower.split(' ')[0])
+        );
+        
+        if (!isMatch) return;
 
         const key = job.employer_name.toLowerCase().trim();
+        const jobDate = job.created_at ? new Date(job.created_at) : null;
         
         if (!employerMap.has(key)) {
           employerMap.set(key, {
@@ -138,19 +179,33 @@ export function useLeadSearch() {
             employer_website: job.employer_website,
             employer_logo: job.employer_logo,
             job_titles: new Set(),
+            matching_titles: new Set(),
             locations: new Set(),
             job_country: job.job_country || '',
             latest_job_posted: job.job_posted_at,
             job_count: 0,
+            recent_jobs_7d: 0,
+            recent_jobs_30d: 0,
           });
         }
 
         const employer = employerMap.get(key)!;
         employer.job_count++;
-        if (job.job_title) employer.job_titles.add(job.job_title);
+        if (job.job_title) {
+          employer.job_titles.add(job.job_title);
+          // Track which patterns this job matched
+          const matchedPattern = jobTitlePatterns.find(p => jobTitleLower.includes(p));
+          if (matchedPattern) employer.matching_titles.add(matchedPattern);
+        }
         if (job.job_location) employer.locations.add(job.job_location);
         if (job.job_posted_at && (!employer.latest_job_posted || job.job_posted_at > employer.latest_job_posted)) {
           employer.latest_job_posted = job.job_posted_at;
+        }
+        
+        // Track recency metrics
+        if (jobDate) {
+          if (jobDate >= days7Ago) employer.recent_jobs_7d++;
+          if (jobDate >= days30Ago) employer.recent_jobs_30d++;
         }
       });
 
@@ -164,6 +219,9 @@ export function useLeadSearch() {
         locations: Array.from(e.locations),
         job_country: e.job_country,
         latest_job_posted: e.latest_job_posted,
+        recent_jobs_7d: e.recent_jobs_7d,
+        recent_jobs_30d: e.recent_jobs_30d,
+        matching_titles_count: e.matching_titles.size,
       }));
 
       // Apply min jobs filter
@@ -176,8 +234,8 @@ export function useLeadSearch() {
         results = results.filter(lead => lead.employer_website);
       }
 
-      // Sort by job count descending
-      results.sort((a, b) => b.job_count - a.job_count);
+      // Sort by current sort settings
+      results = sortLeads(results, sortField, sortOrder);
 
       setLeads(results);
     } catch (err) {
@@ -188,14 +246,46 @@ export function useLeadSearch() {
     }
   };
 
+  const sortLeads = (leadsToSort: Lead[], field: SortField, order: SortOrder): Lead[] => {
+    return [...leadsToSort].sort((a, b) => {
+      let comparison = 0;
+      switch (field) {
+        case 'job_count':
+          comparison = a.job_count - b.job_count;
+          break;
+        case 'recent_jobs_7d':
+          comparison = a.recent_jobs_7d - b.recent_jobs_7d;
+          break;
+        case 'latest_job_posted':
+          const dateA = a.latest_job_posted ? new Date(a.latest_job_posted).getTime() : 0;
+          const dateB = b.latest_job_posted ? new Date(b.latest_job_posted).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+        case 'employer_name':
+          comparison = a.employer_name.localeCompare(b.employer_name);
+          break;
+      }
+      return order === 'desc' ? -comparison : comparison;
+    });
+  };
+
+  const updateSort = (field: SortField) => {
+    const newOrder = field === sortField && sortOrder === 'desc' ? 'asc' : 'desc';
+    setSortField(field);
+    setSortOrder(newOrder);
+    setLeads(prev => sortLeads(prev, field, newOrder));
+  };
+
   const exportToCsv = () => {
     if (leads.length === 0) return;
 
-    const headers = ['company_name', 'website', 'job_count', 'job_titles', 'locations', 'country', 'last_posted'];
+    const headers = ['company_name', 'website', 'job_count', 'jobs_7d', 'jobs_30d', 'job_titles', 'locations', 'country', 'last_posted'];
     const rows = leads.map(lead => [
       `"${lead.employer_name.replace(/"/g, '""')}"`,
       lead.employer_website || '',
       lead.job_count.toString(),
+      lead.recent_jobs_7d.toString(),
+      lead.recent_jobs_30d.toString(),
       `"${lead.job_titles.join(', ').replace(/"/g, '""')}"`,
       `"${lead.locations.join(', ').replace(/"/g, '""')}"`,
       lead.job_country.toUpperCase(),
@@ -223,5 +313,8 @@ export function useLeadSearch() {
     fetchProfiles,
     searchLeads,
     exportToCsv,
+    sortField,
+    sortOrder,
+    updateSort,
   };
 }

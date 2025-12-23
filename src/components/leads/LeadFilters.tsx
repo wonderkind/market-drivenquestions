@@ -16,11 +16,11 @@ interface LeadFiltersProps {
 
 const COUNTRIES = [
   { value: 'all', label: 'All Countries' },
-  { value: 'nl', label: 'Netherlands' },
-  { value: 'us', label: 'United States' },
-  { value: 'de', label: 'Germany' },
-  { value: 'gb', label: 'United Kingdom' },
-  { value: 'fr', label: 'France' },
+  { value: 'NL', label: 'Netherlands' },
+  { value: 'US', label: 'United States' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'FR', label: 'France' },
 ];
 
 const MIN_JOBS_OPTIONS = [
