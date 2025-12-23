@@ -85,12 +85,33 @@ export type AnswerType = 'yes_no' | 'multiple_choice' | 'experience' | 'text';
 export interface AnswerOption {
   label: string;
   emoji?: string;
+  score?: number; // 0-100 match percentage
+  isPreferred?: boolean; // Mark as the ideal answer
+}
+
+export interface ExperienceScoreTier {
+  minValue: number;
+  maxValue: number;
+  score: number; // 0-100
+  label?: string; // e.g., "Expert", "Intermediate"
 }
 
 export interface ExperienceConfig {
   min: number;
   max: number;
   unit: 'years' | 'months';
+  scoringTiers?: ExperienceScoreTier[];
+}
+
+export interface YesNoScoring {
+  yesScore: number; // e.g., 100
+  noScore: number;  // e.g., 0, or could be 50 for "preferred but not required"
+}
+
+export interface QuestionScoring {
+  yesNoScoring?: YesNoScoring;
+  isRequired?: boolean; // If true, 0% score = disqualified
+  weight?: number; // Importance weight (1-10), default 5
 }
 
 export interface AnalysisQuestion {
@@ -103,6 +124,7 @@ export interface AnalysisQuestion {
   options?: AnswerOption[];
   experienceConfig?: ExperienceConfig;
   userAnswer?: string | string[] | number | boolean;
+  scoring?: QuestionScoring;
 }
 
 export interface AnalysisCategory {

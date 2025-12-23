@@ -174,19 +174,42 @@ Examples of the Gen-Z friendly English tone:
 For each question, determine the appropriate answer type:
 
 1. **yes_no**: Use for binary questions that can be answered with Yes or No
-   - Examples: "Do you have a valid driver's license?", "Are you EU citizen?"
-   
+   - Examples: "Do you have a valid driver's license?", "Are you EU citizen?"
+   
 2. **multiple_choice**: Use for questions where multiple options apply (like languages, certifications held)
-   - MUST include "options" array with label and optional emoji
-   - Examples: "Which languages do you speak?", "Which certifications do you have?"
-   - Always include 3-6 relevant options based on job requirements
-   
+   - MUST include "options" array with label, optional emoji, and REQUIRED score (0-100)
+   - Mark the best option(s) with "isPreferred": true
+   - Examples: "Which languages do you speak?", "Which certifications do you have?"
+   - Always include 3-6 relevant options based on job requirements
+   
 3. **experience**: Use for questions about years/months of experience
-   - MUST include "experienceConfig" with min, max, and unit ("years" or "months")
-   - Examples: "How many years of warehouse experience?", "How long have you worked as a forklift operator?"
-   
+   - MUST include "experienceConfig" with min, max, unit, AND scoringTiers
+   - Examples: "How many years of warehouse experience?", "How long have you worked as a forklift operator?"
+   
 4. **text**: Use for open-ended questions (use sparingly)
-   - Examples: "Describe your previous role as...", "What specific equipment have you operated?"
+   - Examples: "Describe your previous role as...", "What specific equipment have you operated?"
+
+## SCORING RULES (CRITICAL)
+
+For EVERY question, include a "scoring" object to enable candidate matching:
+
+### For yes_no questions:
+- Include "yesNoScoring" with "yesScore" and "noScore" (0-100)
+- If the answer is REQUIRED (e.g., must have license), set yesScore: 100, noScore: 0
+- If PREFERRED but not required, set yesScore: 100, noScore: 50-70 (depending on importance)
+
+### For multiple_choice questions:
+- Each option MUST have a "score" (0-100) indicating match quality
+- Mark the ideal answer(s) with "isPreferred": true
+- Options can have overlapping scores (e.g., two equally good options both at 100)
+
+### For experience questions:
+- Include "scoringTiers" array in experienceConfig with score for each tier
+- Example tiers: 5+ years = 100, 3-5 = 80, 1-3 = 60, <1 = 30
+
+### General scoring fields:
+- "isRequired": true/false - If true, 0% score means candidate is disqualified
+- "weight": 1-10 - Importance weight based on mention frequency (higher mentions = higher weight)
 
 ## OUTPUT INSTRUCTIONS
 
@@ -199,36 +222,39 @@ For each category, provide maximum 2 suggested interview questions that a job se
 
 Return your analysis as a JSON object with this exact structure:
 {
-  "license": {
-    "questions": [
-      {
-        "question": "The interview question in ${outputLanguage}",
-        "answerType": "yes_no | multiple_choice | experience | text",
-        "options": [{"label": "Option 1", "emoji": "🏷️"}, ...],
-        "experienceConfig": {"min": 0, "max": 10, "unit": "years"},
-        "mentions": <number of jobs mentioning this requirement>,
-        "certainty": "<high/medium/low>",
-        "quotes": ["Quote 1 from job description", "Quote 2"],
-        "sources": ["Company 1", "Company 2"]
-      }
-    ]
-  },
-  "certification": {
-    "questions": [...]
-  },
-  "qualification": {
-    "questions": [...]
-  },
-  "operationele_fit": {
-    "questions": [...]
-  },
-  "summary": "Brief overall summary of requirements trends in ${outputLanguage}"
+  "license": {
+    "questions": [
+      {
+        "question": "The interview question in ${outputLanguage}",
+        "answerType": "yes_no | multiple_choice | experience | text",
+        "options": [{"label": "Option 1", "emoji": "🏷️", "score": 100, "isPreferred": true}, {"label": "Option 2", "emoji": "📋", "score": 60}],
+        "experienceConfig": {"min": 0, "max": 10, "unit": "years", "scoringTiers": [{"minValue": 5, "maxValue": 10, "score": 100, "label": "Expert"}, {"minValue": 3, "maxValue": 5, "score": 80, "label": "Experienced"}, {"minValue": 1, "maxValue": 3, "score": 60, "label": "Intermediate"}, {"minValue": 0, "maxValue": 1, "score": 30, "label": "Beginner"}]},
+        "scoring": {"yesNoScoring": {"yesScore": 100, "noScore": 0}, "isRequired": true, "weight": 8},
+        "mentions": <number of jobs mentioning this requirement>,
+        "certainty": "<high/medium/low>",
+        "quotes": ["Quote 1 from job description", "Quote 2"],
+        "sources": ["Company 1", "Company 2"]
+      }
+    ]
+  },
+  "certification": {
+    "questions": [...]
+  },
+  "qualification": {
+    "questions": [...]
+  },
+  "operationele_fit": {
+    "questions": [...]
+  },
+  "summary": "Brief overall summary of requirements trends in ${outputLanguage}"
 }
 
 **IMPORTANT for answer types:**
-- "options" field is ONLY required when answerType is "multiple_choice"
-- "experienceConfig" field is ONLY required when answerType is "experience"
-- For "yes_no" and "text" types, do NOT include options or experienceConfig
+- "options" field is ONLY required when answerType is "multiple_choice" - MUST include score for each option
+- "experienceConfig" field is ONLY required when answerType is "experience" - MUST include scoringTiers
+- For "yes_no" types, include yesNoScoring in the scoring object
+- For "text" types, scoring is optional (default weight: 3)
+- ALL questions MUST have a "scoring" object with at least "weight" and "isRequired"
 
 Be specific with quotes - use actual text from the job descriptions. **Als een vereiste duidelijk is maar niet direct gequote kan worden, gebruik dan een samenvatting van de vereiste uit de beschrijving.** Include the employer name in sources.`;
 
