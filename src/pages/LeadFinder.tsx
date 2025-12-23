@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { LeadFilters } from '@/components/leads/LeadFilters';
@@ -6,7 +6,7 @@ import { LeadTable } from '@/components/leads/LeadTable';
 import { ExportButton } from '@/components/leads/ExportButton';
 import { useLeadSearch, type LeadFilters as LeadFiltersType } from '@/hooks/useLeadSearch';
 import { useAuth } from '@/hooks/useAuth';
-import { Target } from 'lucide-react';
+import { Target, TrendingUp, Building2, Flame } from 'lucide-react';
 
 export default function LeadFinder() {
   const { user, loading: authLoading } = useAuth();
@@ -19,6 +19,9 @@ export default function LeadFinder() {
     fetchProfiles,
     searchLeads,
     exportToCsv,
+    sortField,
+    sortOrder,
+    updateSort,
   } = useLeadSearch();
 
   const [filters, setFilters] = useState<LeadFiltersType>({
@@ -29,11 +32,24 @@ export default function LeadFinder() {
     daysPosted: null,
   });
 
+  const previousFiltersRef = useRef<string>('');
+
   useEffect(() => {
     if (user) {
       fetchProfiles();
     }
   }, [user]);
+
+  // Auto-trigger search when profile and country are selected
+  useEffect(() => {
+    if (filters.profileId && filters.country) {
+      const filterKey = JSON.stringify(filters);
+      if (filterKey !== previousFiltersRef.current) {
+        previousFiltersRef.current = filterKey;
+        searchLeads(filters);
+      }
+    }
+  }, [filters]);
 
   if (authLoading) {
     return (
@@ -49,11 +65,14 @@ export default function LeadFinder() {
 
   const handleSearch = () => {
     if (filters.profileId) {
+      previousFiltersRef.current = JSON.stringify(filters);
       searchLeads(filters);
     }
   };
 
   const totalJobs = leads.reduce((sum, lead) => sum + lead.job_count, 0);
+  const hotLeads = leads.filter(l => l.recent_jobs_7d > 0).length;
+  const activeLeads = leads.filter(l => l.recent_jobs_30d > 0).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,9 +86,9 @@ export default function LeadFinder() {
               <Target className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Lead Finder</h1>
+              <h1 className="text-2xl font-semibold text-foreground">Lead Intelligence</h1>
               <p className="text-sm text-muted-foreground">
-                Find companies hiring in your candidate segments
+                Find companies actively hiring in your candidate segments
               </p>
             </div>
           </div>
@@ -92,11 +111,37 @@ export default function LeadFinder() {
           />
         </div>
 
-        {/* Results Summary */}
+        {/* Results Summary with Metrics */}
         {leads.length > 0 && (
-          <div className="mb-4 text-sm text-muted-foreground">
-            Found <span className="font-medium text-foreground">{leads.length}</span> companies 
-            with <span className="font-medium text-foreground">{totalJobs}</span> open positions
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-card border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <Building2 className="h-4 w-4" />
+                Companies
+              </div>
+              <div className="text-2xl font-semibold text-foreground">{leads.length}</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <TrendingUp className="h-4 w-4" />
+                Open Positions
+              </div>
+              <div className="text-2xl font-semibold text-foreground">{totalJobs}</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <Flame className="h-4 w-4 text-orange-500" />
+                Hot Leads (7d)
+              </div>
+              <div className="text-2xl font-semibold text-foreground">{hotLeads}</div>
+            </div>
+            <div className="bg-card border rounded-lg p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                Active (30d)
+              </div>
+              <div className="text-2xl font-semibold text-foreground">{activeLeads}</div>
+            </div>
           </div>
         )}
 
@@ -108,7 +153,13 @@ export default function LeadFinder() {
         )}
 
         {/* Results Table */}
-        <LeadTable leads={leads} loading={loading} />
+        <LeadTable 
+          leads={leads} 
+          loading={loading} 
+          sortField={sortField}
+          sortOrder={sortOrder}
+          onSort={updateSort}
+        />
       </main>
     </div>
   );
