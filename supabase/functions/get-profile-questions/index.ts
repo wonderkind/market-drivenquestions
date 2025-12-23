@@ -54,6 +54,8 @@ serve(async (req) => {
     // Get query params
     const url = new URL(req.url);
     let profileId = url.searchParams.get('profileId');
+    let profileName = url.searchParams.get('profileName');
+    let country = url.searchParams.get('country');
     const listProfiles = url.searchParams.get('list') === 'true';
 
     // Handle POST body
@@ -61,6 +63,8 @@ serve(async (req) => {
       try {
         const body = await req.json();
         profileId = body.profileId || profileId;
+        profileName = body.profileName || profileName;
+        country = body.country || country;
       } catch {
         // No body or invalid JSON, continue with query params
       }
@@ -105,29 +109,94 @@ serve(async (req) => {
       });
     }
 
-    // Require profileId for single profile fetch
-    if (!profileId) {
-      console.log('get-profile-questions: Missing profileId');
+    // Require profileId OR profileName for single profile fetch
+    if (!profileId && !profileName) {
+      console.log('get-profile-questions: Missing profileId and profileName');
       return new Response(JSON.stringify({ 
-        error: 'profileId is required. Use ?list=true to see available profiles.' 
+        error: 'profileId or profileName is required. Use ?list=true to see available profiles.' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log(`get-profile-questions: Fetching profile ${profileId}`);
+    let profile;
+    let matchInfo: { searchedName?: string; matchedName?: string; totalMatches?: number; selectedReason?: string } | null = null;
 
-    // Fetch profile data
-    const { data: profile, error } = await supabase
-      .from('analysis_results')
-      .select('*')
-      .eq('id', profileId)
-      .single();
+    // Fetch by profileId (priority) or search by profileName
+    if (profileId) {
+      console.log(`get-profile-questions: Fetching profile by ID: ${profileId}`);
+      const { data, error } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .eq('id', profileId)
+        .maybeSingle();
 
-    if (error || !profile) {
+      if (error) {
+        console.error('get-profile-questions: Error fetching profile:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch profile' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      profile = data;
+    } else if (profileName) {
+      console.log(`get-profile-questions: Searching profile by name: "${profileName}"${country ? ` with country: ${country}` : ''}`);
+      
+      // Fetch all profiles and filter in memory for case-insensitive partial matching
+      const { data: allProfiles, error } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('get-profile-questions: Error fetching profiles:', error);
+        return new Response(JSON.stringify({ error: 'Failed to search profiles' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Filter profiles by name (case-insensitive partial match)
+      const searchTermLower = profileName.toLowerCase();
+      let matchingProfiles = allProfiles?.filter(p => {
+        const data = p.analysis_data as AnalysisData;
+        const profileNameInData = data?.profile?.toLowerCase() || '';
+        return profileNameInData.includes(searchTermLower);
+      }) || [];
+
+      // Apply country filter if provided
+      if (country && matchingProfiles.length > 0) {
+        const countryLower = country.toLowerCase();
+        matchingProfiles = matchingProfiles.filter(p => {
+          const data = p.analysis_data as AnalysisData;
+          return data?.country?.toLowerCase() === countryLower;
+        });
+      }
+
+      console.log(`get-profile-questions: Found ${matchingProfiles.length} matching profiles`);
+
+      if (matchingProfiles.length > 0) {
+        // Return the most recent matching profile
+        profile = matchingProfiles[0];
+        const matchedData = profile.analysis_data as AnalysisData;
+        matchInfo = {
+          searchedName: profileName,
+          matchedName: matchedData?.profile,
+          totalMatches: matchingProfiles.length,
+          selectedReason: matchingProfiles.length > 1 ? 'Most recent' : 'Exact match'
+        };
+      }
+    }
+
+    if (!profile) {
       console.log('get-profile-questions: Profile not found');
-      return new Response(JSON.stringify({ error: 'Profile not found' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Profile not found',
+        searchedBy: profileId ? 'profileId' : 'profileName',
+        searchValue: profileId || profileName,
+        ...(country && { countryFilter: country })
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -138,6 +207,7 @@ serve(async (req) => {
     const response = {
       profileId: profile.id,
       createdAt: profile.created_at,
+      ...(matchInfo && { matchInfo }),
       metadata: {
         profile: analysisData?.profile,
         country: analysisData?.country,
@@ -152,7 +222,7 @@ serve(async (req) => {
       summary: analysisData?.questions?.summary || null
     };
 
-    console.log(`get-profile-questions: Successfully fetched profile with ${countQuestions(analysisData?.questions)} questions`);
+    console.log(`get-profile-questions: Successfully fetched profile "${analysisData?.profile}" with ${countQuestions(analysisData?.questions)} questions`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
