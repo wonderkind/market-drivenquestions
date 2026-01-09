@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, LayoutDashboard, Briefcase } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, Briefcase, Users } from 'lucide-react';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -32,6 +32,12 @@ export function Header() {
                 <Button variant="ghost" size="sm" className="gap-2">
                   <LayoutDashboard className="h-4 w-4" />
                   <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              </Link>
+              <Link to="/users">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Users</span>
                 </Button>
               </Link>
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-2 text-muted-foreground hover:text-foreground">
