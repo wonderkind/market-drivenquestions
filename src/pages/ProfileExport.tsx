@@ -131,10 +131,12 @@ export default function ProfileExport() {
     try {
       // Use direct fetch for public access (no auth required)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const response = await fetch(`${supabaseUrl}/functions/v1/get-profile-export`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'apikey': supabaseKey,
         },
         body: JSON.stringify({ profileId: id })
       });
