@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
-import { SavedQuestionsData, AnalysisQuestion } from '@/types/job';
+import { SavedQuestionsData, AnalysisQuestion, AnswerOption } from '@/types/job';
 import { Car, GraduationCap, Award, Globe, Languages, Briefcase, Wrench, FileText, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ProfileData {
   id: string;
@@ -27,6 +29,87 @@ const languageLabels: Record<string, string> = {
   de: 'German',
   fr: 'French'
 };
+
+// Default emojis for options without specific emoji (same as QuestionAnswer)
+const defaultEmojis = ['📌', '✨', '💡', '🔹', '⭐', '📎', '🔸', '💠'];
+
+// Experience options (same as QuestionAnswer)
+const experienceOptions = [
+  { value: 0, label: 'No experience', emoji: '0️⃣' },
+  { value: 1, label: 'Less than 1 year', emoji: '1️⃣' },
+  { value: 2, label: '1-3 years', emoji: '2️⃣' },
+  { value: 3, label: '3-5 years', emoji: '3️⃣' },
+  { value: 5, label: '5+ years', emoji: '5️⃣' },
+];
+
+// Render answer options in the same style as QuestionAnswer component
+function AnswerOptionsDisplay({ question }: { question: AnalysisQuestion }) {
+  if (question.answerType === 'yes_no') {
+    return (
+      <div className="flex gap-3 mt-3">
+        <div className="flex-1 h-12 text-base font-medium border-2 border-border rounded-md flex items-center justify-center bg-card">
+          ✅ Yes
+        </div>
+        <div className="flex-1 h-12 text-base font-medium border-2 border-border rounded-md flex items-center justify-center bg-card">
+          ❌ No
+        </div>
+      </div>
+    );
+  }
+
+  if (question.answerType === 'multiple_choice' && question.options) {
+    return (
+      <div className="mt-3 space-y-2">
+        <p className="text-sm text-muted-foreground mb-2">Select all that apply</p>
+        <div className="grid gap-2">
+          {question.options.map((option: AnswerOption, index: number) => {
+            const emoji = option.emoji || defaultEmojis[index % defaultEmojis.length];
+            return (
+              <div
+                key={option.label}
+                className="flex items-center gap-3 p-4 rounded-xl border-2 border-border bg-card"
+              >
+                <Checkbox disabled className="pointer-events-none" />
+                <span className="text-xl">{emoji}</span>
+                <span className="font-medium">{option.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (question.answerType === 'experience') {
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="grid gap-2">
+          {experienceOptions.map((option) => (
+            <div
+              key={option.value}
+              className="flex items-center gap-3 p-4 rounded-xl border-2 border-border bg-card"
+            >
+              <span className="text-xl">{option.emoji}</span>
+              <span className="font-medium">{option.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (question.answerType === 'text') {
+    return (
+      <div className="mt-3">
+        <div className="h-12 border-2 border-border rounded-md bg-card flex items-center px-4 text-muted-foreground">
+          Type your answer...
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function ProfileExport() {
   const { id } = useParams<{ id: string }>();
@@ -98,29 +181,17 @@ export default function ProfileExport() {
           <CardDescription>{questions.length} questions</CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="space-y-3">
+          <div className="space-y-6">
             {questions.map((q: AnalysisQuestion, index: number) => (
-              <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                <div className="flex-shrink-0 mt-0.5">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
+              <div key={index} className="p-4 rounded-lg bg-muted/30">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="font-medium text-foreground flex-1">{q.question}</p>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{q.question}</p>
-                  {q.answerType && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {q.answerType === 'yes_no' && '✓ Yes/No'}
-                        {q.answerType === 'multiple_choice' && '☰ Multiple Choice'}
-                        {q.answerType === 'experience' && '📊 Experience Level'}
-                        {q.answerType === 'text' && '✎ Open Answer'}
-                      </Badge>
-                      {q.options && q.options.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          Options: {q.options.map(o => o.label).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                <div className="ml-8">
+                  <AnswerOptionsDisplay question={q} />
                 </div>
               </div>
             ))}
