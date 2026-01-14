@@ -11,8 +11,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { AnalysisResult, SavedQuestionsData, AnalysisQuestion, AnswerType, AnswerOption, ExperienceConfig, PotentialQuestions } from '@/types/job';
 import { QuestionAnswer } from '@/components/QuestionAnswer';
 import { PotentialQuestionItem } from '@/components/PotentialQuestionItem';
-import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench, AlertTriangle, Minus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Car, GraduationCap, Award, Globe, Languages, Calendar, Briefcase, Pencil, Check, X, Trash2, Save, Loader2, Database, Wrench, AlertTriangle, Minus, RefreshCw, Share2, Link, Copy } from 'lucide-react';
 import { DeleteProfileDialog } from '@/components/DeleteProfileDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AnalysisQuestionLocal {
   question: string;
@@ -301,6 +307,44 @@ const [loading, setLoading] = useState(true);
     });
   };
 
+  const countTotalQuestions = () => {
+    if (!profile) return 0;
+    const questions = profile.analysis_data.questions;
+    return (
+      (questions.license?.questions?.length || 0) +
+      (questions.qualification?.questions?.length || 0) +
+      (questions.certification?.questions?.length || 0) +
+      (questions.operationele_fit?.questions?.length || 0)
+    );
+  };
+
+  const isProfileComplete = countTotalQuestions() > 0;
+
+  const getShareUrl = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/share/${profile?.id}`;
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      toast({
+        title: 'Link copied!',
+        description: 'Share link copied to clipboard',
+      });
+    } catch {
+      toast({
+        title: 'Failed to copy',
+        description: 'Please copy the link manually',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleOpenExport = () => {
+    window.open(getShareUrl(), '_blank');
+  };
+
   const renderQuestionList = (
     category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
     title: string,
@@ -496,6 +540,32 @@ const [loading, setLoading] = useState(true);
               <RefreshCw className="h-4 w-4" />
               Regenerate
             </Button>
+            
+            {/* Export/Share Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="gap-2"
+                  disabled={!isProfileComplete}
+                  title={!isProfileComplete ? 'Add questions to enable export' : 'Share profile questions'}
+                >
+                  <Share2 className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleOpenExport} className="gap-2">
+                  <Link className="h-4 w-4" />
+                  Open Live Preview
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  Copy Share Link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Button 
               onClick={() => setDeleteDialogOpen(true)} 
               variant="outline" 
