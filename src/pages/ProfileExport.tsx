@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/integrations/supabase/client';
+
 import { SavedQuestionsData, AnalysisQuestion, AnswerOption } from '@/types/job';
 import { Car, GraduationCap, Award, Globe, Languages, Briefcase, Wrench, FileText, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -129,21 +129,32 @@ export default function ProfileExport() {
     setError(null);
     
     try {
-      const response = await supabase.functions.invoke('get-profile-export', {
-        body: { profileId: id }
+      // Use direct fetch for public access (no auth required)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/get-profile-export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ profileId: id })
       });
       
-      if (response.error) throw response.error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load profile');
+      }
       
-      if (!response.data || !response.data.profile) {
+      const data = await response.json();
+      
+      if (!data || !data.profile) {
         setError('Profile not found or not available for export');
         return;
       }
       
-      setProfile(response.data.profile);
+      setProfile(data.profile);
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setError('Failed to load profile');
+      setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
       setLoading(false);
     }
