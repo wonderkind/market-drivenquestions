@@ -24,5 +24,8 @@ verify_jwt = false
 [functions.invite-user]
 verify_jwt = false
 
+[functions.get-profile-export]
+verify_jwt = false
+
 [auth]
 enabled = true
