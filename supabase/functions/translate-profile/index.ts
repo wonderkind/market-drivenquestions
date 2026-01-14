@@ -39,9 +39,9 @@ serve(async (req) => {
     const countryName = countryNames[country] || country;
     const languageName = languageNames[language] || language;
 
-    const systemPrompt = `You are a job market expert. Given an ONET-SOC occupational profile, return ALL commonly used job titles for this occupation in ${countryName} that fully represent the profile.
+    const systemPrompt = `You are a job market expert. Given an ONET-SOC occupational profile, return the TOP 3 most commonly used job titles for this occupation in ${countryName}.
 The job titles should be in ${languageName} language and reflect how employers in ${countryName} typically advertise these positions.
-Return as many practical, searchable job titles as needed to comprehensively cover how this occupation is advertised on job boards. Include variations, specializations, and alternative terms.`;
+Focus on the 3 most popular and frequently used job titles that would yield the best search results on job boards.`;
 
     const response = await fetch('https://ai-dev-playground.openai.azure.com/openai/deployments/gpt-5/chat/completions?api-version=2025-01-01-preview', {
       method: 'POST',
@@ -52,23 +52,23 @@ Return as many practical, searchable job titles as needed to comprehensively cov
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `ONET-SOC Profile: "${profile}"\n\nProvide all relevant job titles that represent this occupation comprehensively.` }
+          { role: 'user', content: `ONET-SOC Profile: "${profile}"\n\nProvide the 3 most commonly used job titles for this occupation.` }
         ],
         tools: [
           {
             type: 'function',
             function: {
               name: 'return_job_titles',
-              description: 'Return exactly 3 job titles for the given occupational profile',
+              description: 'Return exactly 3 most commonly used job titles for the given occupational profile',
               parameters: {
                 type: 'object',
                 properties: {
                   jobTitles: {
                     type: 'array',
                     items: { type: 'string' },
-                    minItems: 1,
-                    maxItems: 15,
-                    description: 'Array of all relevant job titles that represent the occupation'
+                    minItems: 3,
+                    maxItems: 3,
+                    description: 'Array of exactly 3 most commonly used job titles'
                   }
                 },
                 required: ['jobTitles'],

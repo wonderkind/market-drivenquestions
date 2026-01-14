@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, AnalysisResult, PotentialQuestions, AnalysisQuestion } from '@/types/job';
-import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, MapPin, Globe, Calendar, Sparkles, X, Pencil, Check, ArrowLeft, Brain, Car, GraduationCap, Award, Loader2, Save, Briefcase, Building, Clock, ExternalLink, Languages, Zap, Wrench, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 
 const countries = [{
   value: 'nl',
@@ -107,6 +107,7 @@ const state = location.state as LocationState | undefined;
   const [jobTitles, setJobTitles] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [newTitleValue, setNewTitleValue] = useState('');
   const [locationValue, setLocationValue] = useState('');
   const [country, setCountry] = useState(state?.country || 'nl');
   const [language, setLanguage] = useState(state?.language || 'en');
@@ -173,6 +174,13 @@ const state = location.state as LocationState | undefined;
   const handleCancelEdit = () => {
     setEditingIndex(null);
     setEditValue('');
+  };
+  const handleAddTitle = () => {
+    const trimmed = newTitleValue.trim();
+    if (trimmed && !jobTitles.includes(trimmed)) {
+      setJobTitles(prev => [...prev, trimmed]);
+      setNewTitleValue('');
+    }
   };
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -595,6 +603,35 @@ const state = location.state as LocationState | undefined;
                     </div>)}
                 </div>
                 {jobTitles.length === 0 && <p className="text-sm text-destructive">Add at least one job title to search</p>}
+                
+                {/* Add custom title */}
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <Label className="text-sm text-muted-foreground mb-2 block">Add custom job title</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter a job title..."
+                      value={newTitleValue}
+                      onChange={(e) => setNewTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTitle();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddTitle}
+                      disabled={!newTitleValue.trim()}
+                      className="gap-1"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
