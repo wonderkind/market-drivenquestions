@@ -19,6 +19,61 @@ interface Job {
   job_highlights?: JobHighlights;
 }
 
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to call AI with retry logic
+async function callAIWithRetry(
+  apiKey: string,
+  systemPrompt: string,
+  userContent: string,
+  maxRetries = 3
+): Promise<any> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff: 5s, 15s, 45s
+      const waitTime = 5000 * Math.pow(3, attempt);
+      console.log(`Rate limited. Waiting ${waitTime / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
+      await delay(waitTime);
+    }
+    
+    const response = await fetch("https://ai-dev-playground.openai.azure.com/openai/deployments/gpt-5/chat/completions?api-version=2025-01-01-preview", {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (response.ok) {
+      return await response.json();
+    }
+    
+    if (response.status === 429) {
+      lastError = new Error("Rate limit exceeded");
+      continue; // Retry
+    }
+    
+    if (response.status === 402) {
+      throw new Error("AI credits exhausted. Please add credits to continue.");
+    }
+    
+    const errorText = await response.text();
+    throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
+  }
+  
+  throw lastError || new Error("Max retries exceeded");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -43,28 +98,40 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    // Limit job descriptions to avoid token limits - sample if too many
+    const MAX_JOBS_FOR_ANALYSIS = 150;
+    let jobsToAnalyze = jobs;
+    if (jobs.length > MAX_JOBS_FOR_ANALYSIS) {
+      console.log(`Sampling ${MAX_JOBS_FOR_ANALYSIS} jobs from ${jobs.length} total to avoid token limits`);
+      // Random sampling to get diverse jobs
+      const shuffled = [...jobs].sort(() => Math.random() - 0.5);
+      jobsToAnalyze = shuffled.slice(0, MAX_JOBS_FOR_ANALYSIS);
+    }
 
-    console.log("Analyzing", jobs.length, "job descriptions", enhanced ? "(ENHANCED MODE)" : ""); // Prepare job data for analysis - use enhanced highlights if available
+    console.log(`Analyzing ${jobsToAnalyze.length} job descriptions${jobs.length > MAX_JOBS_FOR_ANALYSIS ? ` (sampled from ${jobs.length})` : ""}`, enhanced ? "(ENHANCED MODE)" : "");
 
-    const jobSummaries = jobs
+    // Prepare job data with shorter descriptions to reduce tokens
+    const jobSummaries = jobsToAnalyze
       .map((job, index) => {
         let summary = `[Job ${index + 1}] ${job.job_title} at ${job.employer_name}:`;
         if (enhanced && job.job_highlights) {
           // Enhanced mode: use structured highlights for better accuracy
           if (job.job_highlights.Qualifications?.length) {
-            summary += `\n\n**QUALIFICATIONS (Structured):**\n${job.job_highlights.Qualifications.map((q) => `- ${q}`).join("\n")}`;
+            summary += `\n**QUALS:** ${job.job_highlights.Qualifications.slice(0, 5).join("; ")}`;
           }
           if (job.job_highlights.Responsibilities?.length) {
-            summary += `\n\n**RESPONSIBILITIES (Structured):**\n${job.job_highlights.Responsibilities.map((r) => `- ${r}`).join("\n")}`;
-          } // Also include description for context
-          summary += `\n\n**Full Description:**\n${job.job_description?.slice(0, 1000) || "No description"}`;
+            summary += `\n**RESP:** ${job.job_highlights.Responsibilities.slice(0, 5).join("; ")}`;
+          }
+          // Shorter description excerpt
+          summary += `\n**Desc:** ${job.job_description?.slice(0, 500) || "N/A"}`;
         } else {
-          // Standard mode: use job description
-          summary += `\n${job.job_description?.slice(0, 1500) || "No description"}`;
+          // Standard mode: shorter description
+          summary += `\n${job.job_description?.slice(0, 800) || "No description"}`;
         }
         return summary;
       })
-      .join("\n\n---\n\n"); // Determine output language
+      .join("\n---\n"); // Determine output language
 
     const outputLanguage = language === "nl" ? "Dutch" : "English";
     const profileName = jobTitle || "this position";
@@ -258,43 +325,9 @@ Return your analysis as a JSON object with this exact structure:
 
 Be specific with quotes - use actual text from the job descriptions. **Als een vereiste duidelijk is maar niet direct gequote kan worden, gebruik dan een samenvatting van de vereiste uit de beschrijving.** Include the employer name in sources.`;
 
-    const response = await fetch("https://ai-dev-playground.openai.azure.com/openai/deployments/gpt-5/chat/completions?api-version=2025-01-01-preview", {
-      method: "POST",
-      headers: {
-        "api-key": OPENAI_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `Analyze these ${jobs.length} job listings and extract License, Qualification, Certification, and Operational Fit requirements:\n\n${jobSummaries}`,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
-    }
-
-    const aiData = await response.json();
+    const userContent = `Analyze these ${jobsToAnalyze.length} job listings and extract License, Qualification, Certification, and Operational Fit requirements:\n\n${jobSummaries}`;
+    
+    const aiData = await callAIWithRetry(OPENAI_API_KEY, systemPrompt, userContent);
     const analysisContent = aiData.choices?.[0]?.message?.content;
     console.log("AI analysis completed");
 
