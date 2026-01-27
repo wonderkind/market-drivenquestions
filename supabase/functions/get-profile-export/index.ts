@@ -36,6 +36,12 @@ interface AnalysisQuestion {
     isRequired?: boolean;
     weight?: number;
   };
+  experienceConfig?: {
+    min: number;
+    max: number;
+    unit: string;
+    scoringTiers?: Array<{ label: string; score: number; minValue: number; maxValue: number }>;
+  };
 }
 
 // Default emojis for options without specific emoji
@@ -50,6 +56,44 @@ const experienceOptions = [
   { value: 5, label: '5+ years', emoji: '5️⃣' },
 ];
 
+// Map category to step_type
+const categoryToStepType: Record<string, string> = {
+  license: 'license',
+  certification: 'certification',
+  qualification: 'experience_level',
+  operationele_fit: 'availability',
+};
+
+// Map emoji to Lucide icon name
+const emojiToIcon: Record<string, string> = {
+  '✅': 'Check',
+  '❌': 'X',
+  '🦺': 'Shield',
+  '🏗️': 'Building2',
+  '📘': 'BookOpen',
+  '⛑️': 'Cross',
+  '🎓': 'GraduationCap',
+  '📄': 'FileText',
+  '🛠️': 'Wrench',
+  '🏫': 'School',
+  '0️⃣': 'bs-Icon0SquareFill',
+  '1️⃣': 'bs-Icon1SquareFill',
+  '2️⃣': 'bs-Icon2SquareFill',
+  '3️⃣': 'bs-Icon3SquareFill',
+  '5️⃣': 'bs-Icon5SquareFill',
+  '📌': 'Pin',
+  '✨': 'Sparkles',
+  '💡': 'Lightbulb',
+  '🔹': 'Diamond',
+  '⭐': 'Star',
+  '📎': 'Paperclip',
+  '🔸': 'Square',
+  '💠': 'Gem',
+  '🔧': 'Wrench',
+  '🏅': 'Medal',
+  '📜': 'ScrollText',
+};
+
 function countQuestions(questions: Record<string, { questions: AnalysisQuestion[] }>): number {
   return Object.values(questions).reduce(
     (total, category) => total + (category?.questions?.length || 0),
@@ -60,6 +104,174 @@ function countQuestions(questions: Record<string, { questions: AnalysisQuestion[
 function isProfileComplete(analysisData: SavedQuestionsData): boolean {
   const totalQuestions = countQuestions(analysisData.questions || {});
   return totalQuestions > 0;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 50);
+}
+
+function getPattern(answerType: string, optionsCount: number): string {
+  switch (answerType) {
+    case 'yes_no':
+      return 'icon_cards_2x1';
+    case 'multiple_choice':
+      if (optionsCount <= 2) return 'icon_cards_2x1';
+      if (optionsCount <= 4) return 'icon_cards_2x2';
+      return 'list_multi';
+    case 'experience':
+      return 'icon_cards_2x2';
+    case 'text':
+      return 'form_fields';
+    default:
+      return 'list_single_icons';
+  }
+}
+
+function getType(answerType: string): string {
+  switch (answerType) {
+    case 'yes_no':
+      return 'select';
+    case 'multiple_choice':
+      return 'multiselect';
+    case 'experience':
+      return 'select';
+    case 'text':
+      return 'textarea';
+    default:
+      return 'select';
+  }
+}
+
+function transformQuestionToStep(
+  q: AnalysisQuestion, 
+  category: string, 
+  index: number
+): Record<string, unknown> {
+  const questionId = `${category}_${index + 1}`;
+  const stepType = categoryToStepType[category] || 'custom';
+  
+  let options: Array<Record<string, unknown>> = [];
+  
+  if (q.answerType === 'yes_no') {
+    options = [
+      {
+        value: 'yes',
+        label: 'Yes',
+        icon: 'Check',
+        color: '#22C55E',
+        iconBgColor: '#22C55E',
+        textColor: '#FFFFFF',
+        size: 'L',
+        bold: true,
+        is_qualifying: true,
+      },
+      {
+        value: 'no',
+        label: 'No',
+        icon: 'X',
+        color: '#EF4444',
+        iconBgColor: '#EF4444',
+        textColor: '#FFFFFF',
+        size: 'L',
+        bold: true,
+        disqualifies: q.scoring?.isRequired || false,
+      },
+    ];
+  } else if (q.answerType === 'experience') {
+    options = experienceOptions.map((opt, idx) => ({
+      value: String(opt.value),
+      label: opt.label,
+      icon: emojiToIcon[opt.emoji] || `bs-Icon${opt.value}SquareFill`,
+      color: '#017AFF',
+      iconBgColor: '#017AFF',
+      textColor: '#FFFFFF',
+      size: 'M',
+      bold: false,
+      is_qualifying: opt.value >= 1,
+    }));
+  } else if (q.options && q.options.length > 0) {
+    options = q.options.map((opt, idx) => {
+      const emoji = opt.emoji || defaultEmojis[idx % defaultEmojis.length];
+      return {
+        value: slugify(opt.label),
+        label: opt.label,
+        icon: emojiToIcon[emoji] || 'Circle',
+        color: opt.isPreferred ? '#22C55E' : '#017AFF',
+        iconBgColor: opt.isPreferred ? '#22C55E' : '#017AFF',
+        textColor: '#FFFFFF',
+        size: 'M',
+        bold: opt.isPreferred || false,
+        is_qualifying: opt.isPreferred || false,
+        disqualifies: opt.label.toLowerCase().includes('none') || opt.label.toLowerCase().includes('no '),
+      };
+    });
+  }
+
+  return {
+    question_id: questionId,
+    question: q.question,
+    type: getType(q.answerType),
+    required: q.scoring?.isRequired || false,
+    step_type: stepType,
+    pattern: getPattern(q.answerType, options.length),
+    slug: slugify(q.question),
+    textBlocks: [],
+    options,
+    // Preserve original metadata for reference
+    _metadata: {
+      mentions: q.mentions,
+      certainty: q.certainty,
+      sources: q.sources,
+      quotes: q.quotes,
+      weight: q.scoring?.weight,
+    },
+  };
+}
+
+function buildTemplateExport(profile: { id: string; created_at: string; analysis_data: unknown }) {
+  const analysisData = profile.analysis_data as SavedQuestionsData;
+  const questions = analysisData.questions || {};
+
+  const steps: Array<Record<string, unknown>> = [];
+  
+  // Process each category
+  const categoryOrder = ['license', 'certification', 'qualification', 'operationele_fit'];
+  
+  for (const category of categoryOrder) {
+    const categoryQuestions = questions[category]?.questions || [];
+    for (let i = 0; i < categoryQuestions.length; i++) {
+      steps.push(transformQuestionToStep(categoryQuestions[i], category, i));
+    }
+  }
+
+  return {
+    template: {
+      name: analysisData.profile,
+      description: `Generated from ${analysisData.jobsScrapedCount || 0} job listings`,
+      country: (analysisData.country || 'US').toUpperCase(),
+      language: analysisData.language || 'en',
+      onet_profile_id: profile.id,
+      client_id: null,
+    },
+    styling: {
+      backgroundColor: '#F8FAFC',
+      buttonColor: '#017AFF',
+      fontColor: '#062A64',
+      fontFamily: 'Poppins',
+    },
+    steps,
+    _source: {
+      profileId: profile.id,
+      createdAt: profile.created_at,
+      exportedAt: new Date().toISOString(),
+      totalQuestions: steps.length,
+      jobsScrapedCount: analysisData.jobsScrapedCount || 0,
+    },
+  };
 }
 
 function formatQuestionForExport(q: AnalysisQuestion, defaultEmojis: string[]) {
@@ -200,6 +412,15 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Profile is not complete - no questions available" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Return template format for external tool import
+    if (format === "template") {
+      const templateExport = buildTemplateExport(profile);
+      return new Response(
+        JSON.stringify(templateExport),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
