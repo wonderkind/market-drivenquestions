@@ -3,9 +3,11 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 import { SavedQuestionsData, AnalysisQuestion, AnswerOption } from '@/types/job';
-import { Car, GraduationCap, Award, Globe, Languages, Briefcase, Wrench, FileText, CheckCircle2 } from 'lucide-react';
+import { Car, GraduationCap, Award, Globe, Languages, Briefcase, Wrench, FileText, CheckCircle2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProfileData {
@@ -173,6 +175,150 @@ export default function ProfileExport() {
     );
   };
 
+  const exportToJSON = () => {
+    if (!profile) return;
+
+    const { analysis_data } = profile;
+    
+    // Build structured export data with all formatting preserved
+    const exportData = {
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        profileId: profile.id,
+        createdAt: profile.created_at,
+        profile: analysis_data.profile,
+        country: analysis_data.country,
+        language: analysis_data.language,
+        jobsScrapedCount: analysis_data.jobsScrapedCount || 0,
+      },
+      categories: {
+        license: {
+          title: 'License Requirements',
+          emoji: '🚗',
+          questions: (analysis_data.questions.license?.questions || []).map((q: AnalysisQuestion) => ({
+            question: q.question,
+            answerType: q.answerType,
+            options: q.answerType === 'multiple_choice' ? (q.options || []).map((opt: AnswerOption, idx: number) => ({
+              label: opt.label,
+              emoji: opt.emoji || defaultEmojis[idx % defaultEmojis.length],
+              score: opt.score,
+              isPreferred: opt.isPreferred,
+            })) : undefined,
+            experienceOptions: q.answerType === 'experience' ? experienceOptions : undefined,
+            yesNoOptions: q.answerType === 'yes_no' ? [
+              { label: 'Yes', emoji: '✅', value: true },
+              { label: 'No', emoji: '❌', value: false },
+            ] : undefined,
+            userAnswer: q.userAnswer,
+            mentions: q.mentions,
+            certainty: q.certainty,
+            quotes: q.quotes,
+            sources: q.sources,
+            scoring: q.scoring,
+          })),
+        },
+        certification: {
+          title: 'Certification Requirements',
+          emoji: '🏆',
+          questions: (analysis_data.questions.certification?.questions || []).map((q: AnalysisQuestion) => ({
+            question: q.question,
+            answerType: q.answerType,
+            options: q.answerType === 'multiple_choice' ? (q.options || []).map((opt: AnswerOption, idx: number) => ({
+              label: opt.label,
+              emoji: opt.emoji || defaultEmojis[idx % defaultEmojis.length],
+              score: opt.score,
+              isPreferred: opt.isPreferred,
+            })) : undefined,
+            experienceOptions: q.answerType === 'experience' ? experienceOptions : undefined,
+            yesNoOptions: q.answerType === 'yes_no' ? [
+              { label: 'Yes', emoji: '✅', value: true },
+              { label: 'No', emoji: '❌', value: false },
+            ] : undefined,
+            userAnswer: q.userAnswer,
+            mentions: q.mentions,
+            certainty: q.certainty,
+            quotes: q.quotes,
+            sources: q.sources,
+            scoring: q.scoring,
+          })),
+        },
+        qualification: {
+          title: 'Qualification Requirements',
+          emoji: '🎓',
+          questions: (analysis_data.questions.qualification?.questions || []).map((q: AnalysisQuestion) => ({
+            question: q.question,
+            answerType: q.answerType,
+            options: q.answerType === 'multiple_choice' ? (q.options || []).map((opt: AnswerOption, idx: number) => ({
+              label: opt.label,
+              emoji: opt.emoji || defaultEmojis[idx % defaultEmojis.length],
+              score: opt.score,
+              isPreferred: opt.isPreferred,
+            })) : undefined,
+            experienceOptions: q.answerType === 'experience' ? experienceOptions : undefined,
+            yesNoOptions: q.answerType === 'yes_no' ? [
+              { label: 'Yes', emoji: '✅', value: true },
+              { label: 'No', emoji: '❌', value: false },
+            ] : undefined,
+            userAnswer: q.userAnswer,
+            mentions: q.mentions,
+            certainty: q.certainty,
+            quotes: q.quotes,
+            sources: q.sources,
+            scoring: q.scoring,
+          })),
+        },
+        operationele_fit: {
+          title: 'Operational Fit',
+          emoji: '🔧',
+          questions: (analysis_data.questions.operationele_fit?.questions || []).map((q: AnalysisQuestion) => ({
+            question: q.question,
+            answerType: q.answerType,
+            options: q.answerType === 'multiple_choice' ? (q.options || []).map((opt: AnswerOption, idx: number) => ({
+              label: opt.label,
+              emoji: opt.emoji || defaultEmojis[idx % defaultEmojis.length],
+              score: opt.score,
+              isPreferred: opt.isPreferred,
+            })) : undefined,
+            experienceOptions: q.answerType === 'experience' ? experienceOptions : undefined,
+            yesNoOptions: q.answerType === 'yes_no' ? [
+              { label: 'Yes', emoji: '✅', value: true },
+              { label: 'No', emoji: '❌', value: false },
+            ] : undefined,
+            userAnswer: q.userAnswer,
+            mentions: q.mentions,
+            certainty: q.certainty,
+            quotes: q.quotes,
+            sources: q.sources,
+            scoring: q.scoring,
+          })),
+        },
+      },
+      summary: {
+        totalQuestions: countQuestions(),
+        questionsByCategory: {
+          license: analysis_data.questions.license?.questions?.length || 0,
+          certification: analysis_data.questions.certification?.questions?.length || 0,
+          qualification: analysis_data.questions.qualification?.questions?.length || 0,
+          operationele_fit: analysis_data.questions.operationele_fit?.questions?.length || 0,
+        },
+      },
+    };
+
+    // Create and download JSON file
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${analysis_data.profile.replace(/\s+/g, '_')}_questions.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('JSON file downloaded successfully!');
+  };
+
   const renderQuestionList = (
     category: 'license' | 'qualification' | 'certification' | 'operationele_fit',
     title: string,
@@ -262,12 +408,23 @@ export default function ProfileExport() {
               </div>
               <span className="font-semibold text-foreground">Profile Questions</span>
             </div>
-            <button 
-              onClick={() => window.print()}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors print:hidden"
-            >
-              Print / Save as PDF
-            </button>
+            <div className="flex items-center gap-3 print:hidden">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToJSON}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export JSON
+              </Button>
+              <button 
+                onClick={() => window.print()}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Print / Save as PDF
+              </button>
+            </div>
           </div>
         </div>
       </header>
